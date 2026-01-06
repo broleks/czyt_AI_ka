@@ -38,14 +38,26 @@
     padding: 0.75rem;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     background: #fff;
     text-align: left;
-    cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.user-card img {
+.user-card-select {
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    flex: 1;
+}
+
+.user-card-select img {
     width: 56px;
     height: 56px;
     border-radius: 12px;
@@ -82,6 +94,11 @@
     margin-top: auto;
 }
 
+.user-delete {
+    margin-left: 0.75rem;
+    white-space: nowrap;
+}
+
 .user-form .avatar-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -113,6 +130,22 @@
 .avatar-option.selected {
     border-color: #1b6ec2;
     box-shadow: 0 0 8px rgba(27, 110, 194, 0.35);
+}
+
+.custom-upload {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.custom-preview {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid #dcdcdc;
 }
 
 @media (max-width: 900px) {
