@@ -1,5 +1,7 @@
 ﻿@page "/"
 @using System.ComponentModel.DataAnnotations
+@using System.IO
+@using Microsoft.AspNetCore.Components.Forms
 @using czyt_AI_ka.Components.Backend
 @using czyt_AI_ka.Components.Backend.Models
 @inject UserState UserState
@@ -23,14 +25,18 @@
                 @foreach (var user in UserState.Users)
                 {
                     var isSelected = UserState.SelectedUser?.Id == user.Id;
-                    <button class="user-card @(isSelected ? "selected" : string.Empty)"
-                            @onclick="() => SelectUser(user)">
-                        <img src="@user.ImagePath" alt="Zdjęcie użytkownika @user.Name" />
-                        <div>
-                            <div class="user-name">@user.Name</div>
-                            <div class="user-meta">Wiek: @user.Age | @user.Gender</div>
-                        </div>
-                    </button>
+                    <div class="user-card @(isSelected ? "selected" : string.Empty)">
+                        <button class="user-card-select" type="button" @onclick="() => SelectUser(user)">
+                            <img src="@user.ImagePath" alt="Zdjęcie użytkownika @user.Name" />
+                            <div>
+                                <div class="user-name">@user.Name</div>
+                                <div class="user-meta">Wiek: @user.Age | @user.Gender</div>
+                            </div>
+                        </button>
+                        <button class="btn btn-danger user-delete" type="button" @onclick="() => RemoveUser(user)">
+                            Usuń
+                        </button>
+                    </div>
                 }
             </div>
 
@@ -85,6 +91,13 @@
                         </label>
                     }
                 </div>
+                <div class="custom-upload">
+                    <InputFile OnChange="OnCustomImageSelected" accept="image/*" />
+                    @if (!string.IsNullOrWhiteSpace(newUser.ImagePath) && newUser.ImagePath.StartsWith("data:image", StringComparison.Ordinal))
+                    {
+                        <img class="custom-preview" src="@newUser.ImagePath" alt="Podgląd zdjęcia użytkownika" />
+                    }
+                </div>
                 <ValidationMessage For="() => newUser.ImagePath" />
             </div>
 
@@ -133,9 +146,29 @@
         UserState.SelectUser(user.Id);
     }
 
+    private void RemoveUser(UserProfile user)
+    {
+        UserState.RemoveUser(user.Id);
+    }
+
     private void ClearSelection()
     {
         UserState.ClearSelection();
+    }
+
+    private async Task OnCustomImageSelected(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        var base64 = Convert.ToBase64String(memoryStream.ToArray());
+        newUser.ImagePath = $"data:{file.ContentType};base64,{base64}";
     }
 
     private class UserFormModel
