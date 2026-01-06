@@ -1,0 +1,82 @@
+############################
+#   .NET / Visual Studio   #
+############################
+
+## Build results
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+
+## VS
+.vs/
+*.user
+*.suo
+*.userosscache
+*.userprefs
+
+## Rider
+.idea/
+
+## Backup & crash
+*.bak
+*.svclog
+*.userprefs
+
+## MSBuild
+*.tlog
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Logs
+*.log
+
+## Azure
+PublishProfiles/
+
+## Others
+*.dbmdl
+*.jfm
+
+############################
+#   YOUR RULES             #
+############################
+
+# Ignore ALL JSON files anywhere
+*.json
+*.appsettings.Development.json
+
+
+# Ignore whole Configuration folder in the project
+czyt_AI_ka/Configuration/
+
+
+############################
+#   OS FILES               #
+############################
+
+# Windows junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
+############################
+#   IDE SPECIFIC           #
+############################
+
+# VS Code
+.vscode/
+.history/

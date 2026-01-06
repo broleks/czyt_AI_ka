@@ -1,0 +1,739 @@
+﻿@page "/reading"
+@using czyt_AI_ka.Components.Backend;
+@using czyt_AI_ka.Components.Backend.Clients
+@using czyt_AI_ka.Components.Backend.Models
+@using OpenAI
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject czyt_AI_ka.Components.Backend.Clients.ChatGptClient ChatGptClient
+
+<div class="app-screen app-screen-czytanie">
+    <div class="app-card">
+
+        <!-- EKRAN 1 – USTAWIANIE BAJKI -->
+        <div class="czytanie-form" hidden="@isScrreen1Hidden">
+            <div class="mb-3 text-center">
+                <label for="exampleFormControlTextarea1" class="form-label">
+                    Napisz proszę, o czym ma być twoja bajka i wybierz, co ma zawierać...
+                </label>
+                <textarea @bind="desireStoryTopic"
+                          placeholder="Np. historia o placu zabaw..."
+                          class="form-control" style="height:45px"
+                          id="exampleFormControlTextarea1"
+                          rows="3">
+                </textarea>
+                <div class="mb-3 text-center">
+                    <label for="range4" class="form-label">Ile ma mieć słów?</label>
+                    <input @bind-value="@desiredWordCount"
+                           type="range"
+                           class="form-range"
+                           min="50"
+                           max="200"
+                           id="range4">
+                    <div id="rangeValue">@desiredWordCount</div>
+                </div>
+            </div>
+
+            <!-- Przyciski wyboru elementów -->
+            <div class="icon-buttons-grid">
+                @foreach (var element in taglist)
+                {
+                    string path = $"images/icons/{element}.png";
+                    <button class="icon-round-btn @(SelectedTags.Contains(element) ? "selected" : "")"
+                            @onclick="@(() => ToggleTag(element))">
+                        <img src="@path" />
+                        <span>@element.ToUpper()</span>
+                    </button>
+                }
+            </div>
+
+            <div class="mb-3 text-center">
+                <label class="form-label">
+                    @maxTagsCommunicat
+                </label>
+            </div>
+            <div class="mb-3 text-center">
+                <button type="button"
+                        @onclick="GenerateStory"
+                        class="btn btn-primary">
+                    Napisz bajkę...
+                </button>
+            </div>
+        </div>
+
+        <!-- EKRAN 2 – OCZEKIWANIE + GRA MEMORY -->
+        <div class="czytanie-form" hidden="@isScrreen2Hidden">
+            <div class="mb-3 text-center">
+                <label class="form-label">
+                    Piszę dla ciebie historyjkę, możesz w tym czasie zagrać w małe memory 😊
+                </label>
+                <textarea @bind="@storyRequestSummaryFinal"
+                          class="form-control"
+                          rows="3">
+                </textarea>
+            </div>
+
+            <!-- MINI GRA: MEMORY 3x4 -->
+            <div class="memory-container">
+                <div class="memory-grid">
+                    @foreach (var card in memoryCards)
+                    {
+                        <button class="memory-card
+                                   @(card.IsMatched ? "matched" : "")
+                                   @((card.IsRevealed && !card.IsMatched) ? " revealed" : "")"
+                                @onclick="() => OnCardClicked(card)">
+                            @if (card.IsRevealed || card.IsMatched)
+                            {
+                                @card.Emoji
+                            }
+                            else
+                            {
+                                <span>?</span>
+                            }
+                        </button>
+                    }
+                </div>
+                <hr />
+                <div class="memory-info">
+                    <div>
+                        Wynik: @memoryScore
+                        <span style="margin-left:10px;">
+                            Czas: @gameTimeElapsed.ToString(@"mm\:ss\.f")
+                        </span>
+
+                        @if (AllMatched)
+                        {
+                            <span> – Brawo! Wygrałeś/aś 🎉</span>
+                        }
+                    </div>
+
+                    <button hidden="@isStartingReadingButtonHidden" type="button"
+                            @onclick="StartReadig"
+                            class="btn btn-primary">
+                        Gotowe, czytamy?
+                    </button>
+
+                    <button class="memory-restart-btn" @onclick="ResetMemoryGame">
+                        Zagraj jeszcze raz
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EKRAN 3 – GOTOWA CZYTANKA -->
+        <div class="czytanie-form" hidden="@isScrreen3Hidden">
+            <div class="mb-3 text-center">
+                <label class="form-label">
+                    Oto twoja czytanka. Powodzenia! :)
+                    <span style="margin-left:8px; font-weight:normal;">
+                        (Liczba słów: @WordCount)
+                    </span>
+                </label>
+                <div style="font-weight:bold; margin-bottom:8px;">
+                    Czas czytania:
+                    @readingTimeElapsed.ToString(@"mm\:ss")
+                </div>
+                <button style="margin-bottom:5px" class="btn btn-danger"
+                        @onclick="StopReading"
+                        disabled="@(isReading == false)">
+                    Koniec czytania
+                </button>
+            </div>
+            <div class="mb-3 text-center">
+                <div class="scroll-text-wrapper">
+                    <button class="scroll-btn" @onclick="ScrollUp">⬆</button>
+                    <textarea @ref="storyAreaRef"
+                              @bind="@storyRequestSummaryFinal"
+                              class="form-control reading-textarea"
+                              style="font-size:@($"{storyFontSize}px")">
+                    </textarea>
+                    <button class="scroll-btn" @onclick="ScrollDown">⬇</button>
+                </div>
+                <div class="mt-2">
+                    <button type="button"
+                            class="btn btn-outline-secondary me-1"
+                            style="width:45%"
+                            @onclick="DecreaseFont">
+                        A-
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            style="width:45%"
+                            @onclick="IncreaseFont">
+                        A+
+                    </button>
+                </div>
+            </div>
+            <div class="mb-3 text-center">
+                <div class="container">
+                    @if (showQuestions && resultAsObject?.questions != null)
+                    {
+                        @for (int i = 0; i < resultAsObject.questions.Length; i++)
+                        {
+                            var questionIndex = i;
+                            var question = resultAsObject.questions[questionIndex];
+
+                            <div class="row align-items-center mb-2">
+                                <!-- KOLUMNA PYTANIA -->
+                                <div class="col-5 fw-bold"
+                                     style="font-size:@($"{storyFontSize}px");">
+                                    @question.question
+                                </div>
+                                <!-- 3 KOLUMNY Z ODPOWIEDZIAMI -->
+                                <div class="col-2">
+                                    <button class="@GetOptionButtonClass(questionIndex, 0)"
+                                            style="width:100%; font-size:@($"{storyFontSize}px")"
+                                            @onclick="() => OnAnswerClicked(questionIndex, 0)">
+                                        @question.options[0]
+                                    </button>
+                                </div>
+
+                                <div class="col-2">
+                                    <button class="@GetOptionButtonClass(questionIndex, 1)"
+                                            style="width:100%; font-size:@($"{storyFontSize}px")"
+                                            @onclick="() => OnAnswerClicked(questionIndex, 1)">
+                                        @question.options[1]
+                                    </button>
+                                </div>
+
+                                <div class="col-2">
+                                    <button class="@GetOptionButtonClass(questionIndex, 2)"
+                                            style="width:100%; font-size:@($"{storyFontSize}px")"
+                                            @onclick="() => OnAnswerClicked(questionIndex, 2)">
+                                        @question.options[2]
+                                    </button>
+                                </div>
+
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- EKRAN 4 – PODSUMOWANIE -->
+        <div class="czytanie-form" hidden="@isSummaryScreenHidden">
+            <div class="summary-container text-center">
+
+                <h2>Gratulacje! 🎉</h2>
+
+                <p class="summary-text">
+                    Gratulacje, Twój wynik to
+                    <strong>@Math.Round(wordsPerMinute)</strong> słów na minutę.
+                </p>
+
+                <button class="btn btn-primary mt-3"
+                        @onclick="RestartProcess">
+                    Jeszcze raz?
+                </button>
+
+                <!-- ANIMACJE ŚWIĘTOWANIA -->
+                <div class="celebration-layer">
+                    <div class="balloons">
+                        <span class="balloon balloon-1">🎈</span>
+                        <span class="balloon balloon-2">🎈</span>
+                        <span class="balloon balloon-3">🎈</span>
+                    </div>
+                    <div class="confetti">
+                        <span class="confetti-piece confetti-1">🎉</span>
+                        <span class="confetti-piece confetti-2">✨</span>
+                        <span class="confetti-piece confetti-3">🎊</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+
+    private ElementReference storyAreaRef;
+    private Backend.Clients.OllamaClient ollamaClient = new OllamaClient();
+    private StoryGenerationResponse resultAsObject = new StoryGenerationResponse();
+    private bool isSummaryScreenHidden = true;
+    private double wordsPerMinute;
+
+    private int desiredWordCount = 100;
+    private string desireStoryTopic = "";
+    private string storyResult = "";
+    private string maxTagsCommunicat = "";
+
+    private string storyRequestSummaryFinal = "";
+    private string storyResultFinal = "";
+
+    private bool isScrreen1Hidden = false;
+    private bool isScrreen2Hidden = true;
+    private bool isScrreen3Hidden = true;
+    private bool isStartingReadingButtonHidden = true;
+    private bool showQuestions;
+
+    private int storyFontSize = 16;
+    private const int MinFontSize = 12;
+    private const int MaxFontSize = 32;
+
+    private int WordCount =>
+    string.IsNullOrWhiteSpace(storyRequestSummaryFinal)
+        ? 0
+        : storyRequestSummaryFinal
+            .Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+            .Length;
+
+    private void ShowSummaryScreen()
+    {
+        // zabezpieczenie przed dzieleniem przez zero
+        var minutes = readingTimeElapsed.TotalMinutes;
+
+        if (minutes <= 0)
+        {
+            // jak ktoś wciśnie „Koniec czytania” od razu :)
+            wordsPerMinute = WordCount;
+        }
+        else
+        {
+            wordsPerMinute = WordCount / minutes;
+        }
+
+        // chowamy ekran z czytanką i pokazujemy podsumowanie
+        isScrreen1Hidden = true;
+        isScrreen2Hidden = true;
+        isScrreen3Hidden = true;
+        isSummaryScreenHidden = false;
+    }
+
+    private async Task ScrollUp()
+    {
+        await JS.InvokeVoidAsync("scrollTextarea", storyAreaRef, -40);
+    }
+
+    private async Task ScrollDown()
+    {
+        await JS.InvokeVoidAsync("scrollTextarea", storyAreaRef, 40);
+    }
+
+    private void IncreaseFont()
+    {
+        if (storyFontSize < MaxFontSize)
+        {
+            storyFontSize += 2;
+        }
+    }
+
+    private void DecreaseFont()
+    {
+        if (storyFontSize > MinFontSize)
+        {
+            storyFontSize -= 2;
+        }
+    }
+
+    private string[] taglist =
+    ["kaczka", "kot", "lew", "pies", "pingwin", "słoń", "żółw",
+    "chłopiec", "dziewczynka", "samochód", "traktor", "góry", "morze",
+    "jednorożec", "księżniczka", "lody", "rycerz", "samolot", "zamek", "smok"];
+
+    private async Task GenerateStory()
+    {
+        isScrreen1Hidden = true;
+        isScrreen2Hidden = false;
+        isScrreen3Hidden = true;
+        isStartingReadingButtonHidden = true;
+
+        string promptPart1 =
+                $"""
+                    Wciel się w rolę autora bajek dla dzieci, który pomaga dzieciom w wieku 3–6 lat uczyć się czytać po polsku.
+
+                    Napisz krótką, prostą i zrozumiałą historię na temat: {desireStoryTopic}.
+
+                    BARDZO WAŻNE – DŁUGOŚĆ HISTORII:
+                    1. Treść historii (pole "story" w JSON) MUSI mieć od {desiredWordCount - 10} do {desiredWordCount + 10} słów.
+                    2. Licz słowa tak jak w edytorze tekstu: ciągi znaków oddzielone spacją lub znakiem nowej linii.
+                    3. Jeśli wygenerowana historia ma mniej niż {desiredWordCount - 10} słów albo więcej niż {desiredWordCount + 10} słów,
+                       PRZEPISZ ją (dopisz lub skróć), aż zmieści się w tym przedziale,
+                       a dopiero potem zwróć finalny wynik.
+                    4. Nie streszczaj na siłę historii tylko po to, żeby była krótsza – sceny powinny być naturalne i zrozumiałe dla dziecka.
+
+                    DODATKOWE ZAŁOŻENIA:
+                    - Historia powinna być ciekawa i przyjazna dla dzieci, mieć pozytywny i ciepły charakter.
+                    - Powinna zawierać postacie lub elementy z tej listy: {PrepareListOfCharacters()}.
+
+                    PYTANIA KONTROLNE:
+                    - Twoim zadaniem jest wygenerowanie historii ORAZ pytań sprawdzających zrozumienie tej historii.
+                    - Pytań powinno być od 1 do 3.
+                    - Celem pytań jest sprawdzenie, czy dziecko zrozumiało treść.
+                    - Ilość i trudność pytań dopasuj do długości i treści historii.
+
+                    Unikaj trudnych słów i długich zdań.
+                """;
+        string promptPart2 =
+                """
+                    Wynik ZAWSZE zwracaj w postaci poprawnego JSON, bez żadnego dodatkowego tekstu przed ani po nim.
+                    Nie dodawaj komentarzy, markdown ani wyjaśnień. Tylko czysty JSON.
+
+                    Format odpowiedzi JSON (schema):
+                    {
+                      "title": "string - tytuł historii",
+                      "story": "string - treść historii (MUSI mieć długość zgodną z wymaganiami podanymi wyżej)",
+                      "questions": [
+                        {
+                          "question": "string - treść pytania",
+                          "options": [
+                            "string - odpowiedź A",
+                            "string - odpowiedź B",
+                            "string - odpowiedź C"
+                          ],
+                          "correctOptionIndex": 0
+                        }
+                      ]
+                    }
+
+                    Zasady:
+                    - "options" MUSI zawierać dokładnie 3 odpowiedzi.
+                    - "correctOptionIndex" MUSI być liczbą 0, 1 lub 2 i wskazywać poprawną odpowiedź z tablicy "options".
+                    - Zwróć WYŁĄCZNIE JSON w podanym formacie.
+                """;
+
+        string finalPrompt = promptPart1 + "\n\n" + promptPart2;
+
+        storyRequestSummaryFinal =
+            "Temat czytanki: " + desireStoryTopic + ".\n" +
+            "Będą w niej: " + PrepareListOfCharacters() + ".\n" +
+            "Będzie zawierała około " + desiredWordCount + " słów.\n";
+
+        try
+        {
+            //Bielik
+            // var result = await ollamaClient.GenerateAsync(prompt);
+            // isStartingReadingButtonHidden = false;
+            // storyResultFinal = result.Trim();
+
+            // OpenAI
+            var result = await ChatGptClient.AskAsync(finalPrompt, "Jesteś asystentem pomagającym rodzicą w nauce ich dzieci różnych zagadnień.");
+            isStartingReadingButtonHidden = false;
+            resultAsObject = JsonSerializer.Deserialize<StoryGenerationResponse>(result);
+        }
+        catch (Exception ex)
+        {
+            storyResultFinal = "Błąd komunikacji z modelem: " + ex.Message;
+        }
+    }
+
+    private string PrepareListOfCharacters()
+    {
+        string lista = "";
+        foreach (var tag in SelectedTags)
+        {
+            lista += tag + ", ";
+        }
+        return lista;
+    }
+
+    private HashSet<string> SelectedTags = new();
+
+    private void ToggleTag(string tag)
+    {
+        if (SelectedTags.Contains(tag))
+        {
+            SelectedTags.Remove(tag);
+            maxTagsCommunicat = "";
+        }
+        else
+        {
+            if (SelectedTags.Count > 2)
+            {
+                maxTagsCommunicat = "Wybierz maksymalnie 3 tematy opowieści";
+            }
+            else
+            {
+                SelectedTags.Add(tag);
+                maxTagsCommunicat = "";
+            }
+        }
+    }
+
+    // ---- MEMORY GAME 3x4 ----
+
+    private class MemoryCard
+    {
+        public int Index { get; set; }
+        public string Emoji { get; set; } = "";
+        public bool IsRevealed { get; set; }
+        public bool IsMatched { get; set; }
+    }
+
+    private DateTime? gameStartTime = null;
+    private TimeSpan gameTimeElapsed = TimeSpan.Zero;
+
+    private System.Timers.Timer? gameTimer;
+
+    private List<MemoryCard> memoryCards = new();
+    private MemoryCard? firstRevealed;
+    private MemoryCard? secondRevealed;
+    private bool isCheckingPair = false;
+    private int memoryScore = 0;
+
+    private bool AllMatched => memoryCards.All(c => c.IsMatched);
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ResetMemoryGame();
+    }
+
+    private void StartReadig()
+    {
+        storyRequestSummaryFinal = resultAsObject.title + "\n\n" + resultAsObject.story;
+
+        isScrreen2Hidden = true;
+        isScrreen3Hidden = false;
+
+        // Start timera czytania
+        readingStartTime = DateTime.Now;
+        isReading = true;
+
+        readingTimer = new System.Timers.Timer(200);
+        readingTimer.Elapsed += (s, e) =>
+        {
+            if (readingStartTime != null)
+                readingTimeElapsed = DateTime.Now - readingStartTime.Value;
+
+            InvokeAsync(StateHasChanged);
+        };
+
+        readingTimer.Start();
+    }
+
+    // quiz
+    private int correctAnswersCount;
+    private int totalQuestionsCount;
+    private int?[] selectedOptions;
+
+    private void OnAnswerClicked(int questionIndex, int optionIndex)
+    {
+        if (resultAsObject?.questions == null ||
+            questionIndex < 0 ||
+            questionIndex >= resultAsObject.questions.Length)
+        {
+            return;
+        }
+
+        // zapisujemy wybór użytkownika
+        selectedOptions ??= new int?[resultAsObject.questions.Length];
+        selectedOptions[questionIndex] = optionIndex;
+
+        // przeliczamy wynik od zera, żeby nie dało się nabić punktów wielokrotnym klikaniem
+        correctAnswersCount = 0;
+
+        for (int i = 0; i < resultAsObject.questions.Length; i++)
+        {
+            if (selectedOptions[i].HasValue &&
+                selectedOptions[i].Value == resultAsObject.questions[i].correctOptionIndex)
+            {
+                correctAnswersCount++;
+            }
+        }
+
+        // 👉 jeśli wszystkie odpowiedzi są poprawne – przejście na ekran podsumowania
+        if (totalQuestionsCount > 0 && correctAnswersCount == totalQuestionsCount)
+        {
+            ShowSummaryScreen();
+        }
+    }
+
+    private void RestartProcess()
+    {
+        // wyzerowanie treści i ustawień
+        desiredWordCount = 100;
+        desireStoryTopic = "";
+        storyResult = "";
+        maxTagsCommunicat = "";
+
+        storyRequestSummaryFinal = "";
+        storyResultFinal = "";
+
+        resultAsObject = new StoryGenerationResponse();
+        SelectedTags.Clear();
+
+        // ekrany
+        isScrreen1Hidden = false;
+        isScrreen2Hidden = true;
+        isScrreen3Hidden = true;
+        isSummaryScreenHidden = true;
+        isStartingReadingButtonHidden = true;
+        showQuestions = false;
+
+        // czytanie
+        readingStartTime = null;
+        readingTimeElapsed = TimeSpan.Zero;
+        if (readingTimer != null)
+        {
+            readingTimer.Stop();
+            readingTimer.Dispose();
+            readingTimer = null;
+        }
+        isReading = false;
+
+        // quiz
+        correctAnswersCount = 0;
+        totalQuestionsCount = 0;
+        selectedOptions = null;
+
+        // memory – nowa gra
+        ResetMemoryGame();
+    }
+
+    private string GetOptionButtonClass(int questionIndex, int optionIndex)
+    {
+        var baseClass = "btn btn-secondary";   // możesz dodać np. btn-outline-secondary
+
+        // jeśli jeszcze nic nie kliknięto — przyciski neutralne
+        if (selectedOptions == null || !selectedOptions[questionIndex].HasValue)
+            return baseClass;
+
+        var userSelected = selectedOptions[questionIndex].Value;
+        var correct = resultAsObject.questions[questionIndex].correctOptionIndex;
+
+        // jeśli to kliknięta przez użytkownika odpowiedź
+        if (userSelected == optionIndex)
+        {
+            // poprawna → ZIELONY
+            if (userSelected == correct)
+                return "btn btn-success";
+
+            // błędna → CZERWONY
+            return "btn btn-danger";
+        }
+
+        // inne przyciski neutralne
+        return baseClass;
+    }
+
+
+    private void StopReading()
+    {
+        isReading = false;
+
+        if (readingTimer != null)
+        {
+            readingTimer.Stop();
+            readingTimer.Dispose();
+            readingTimer = null;
+        }
+
+        // po zakończeniu czytania pokazujemy pytania
+        showQuestions = true;
+
+        // inicjalizacja quizu
+        if (resultAsObject?.questions != null)
+        {
+            totalQuestionsCount = resultAsObject.questions.Length;
+            selectedOptions = new int?[totalQuestionsCount];
+            correctAnswersCount = 0;
+        }
+    }
+
+    private void ResetMemoryGame()
+    {
+        var rnd = new Random();
+
+        // 6 par (12 kart)
+        var emojis = new[] { "🐱", "🦆", "🦁", "🐶", "🐰", "🐻" };
+        var pairs = emojis.SelectMany(e => new[] { e, e }).ToList(); // 12 elementów
+
+        pairs = pairs.OrderBy(_ => rnd.Next()).ToList();
+
+        memoryCards = new List<MemoryCard>();
+
+        for (int i = 0; i < pairs.Count; i++)
+        {
+            var emoji = pairs[i];
+            memoryCards.Add(new MemoryCard
+            {
+                Index = i,
+                Emoji = emoji,
+                IsRevealed = false,
+                IsMatched = false
+            });
+        }
+
+        firstRevealed = null;
+        secondRevealed = null;
+        isCheckingPair = false;
+        memoryScore = 0;
+
+        gameStartTime = null;
+        gameTimeElapsed = TimeSpan.Zero;
+
+        if (gameTimer != null)
+        {
+            gameTimer.Stop();
+            gameTimer.Dispose();
+            gameTimer = null;
+        }
+    }
+
+    private async Task OnCardClicked(MemoryCard card)
+    {
+        if (gameStartTime == null)
+        {
+            gameStartTime = DateTime.Now;
+
+            gameTimer = new System.Timers.Timer(200); // odświeżanie co 0.2s
+            gameTimer.Elapsed += (s, e) =>
+            {
+                gameTimeElapsed = DateTime.Now - gameStartTime.Value;
+                InvokeAsync(StateHasChanged);
+            };
+            gameTimer.Start();
+        }
+
+        if (isCheckingPair || card.IsMatched || card.IsRevealed)
+            return;
+
+        card.IsRevealed = true;
+
+        if (firstRevealed == null)
+        {
+            firstRevealed = card;
+        }
+        else if (secondRevealed == null && card != firstRevealed)
+        {
+            secondRevealed = card;
+            isCheckingPair = true;
+
+            await Task.Delay(700);
+
+            if (firstRevealed.Emoji == secondRevealed.Emoji &&
+                !string.IsNullOrEmpty(firstRevealed.Emoji))
+            {
+                firstRevealed.IsMatched = true;
+                secondRevealed.IsMatched = true;
+                memoryScore++;
+            }
+            else
+            {
+                firstRevealed.IsRevealed = false;
+                secondRevealed.IsRevealed = false;
+            }
+
+            firstRevealed = null;
+            secondRevealed = null;
+            isCheckingPair = false;
+        }
+
+        StateHasChanged();
+
+        if (AllMatched && gameTimer != null)
+        {
+            gameTimer.Stop();
+            gameTimer.Dispose();
+            gameTimer = null;
+        }
+    }
+
+    private DateTime? readingStartTime = null;
+    private TimeSpan readingTimeElapsed = TimeSpan.Zero;
+    private System.Timers.Timer? readingTimer;
+    private bool isReading = false;
+
+}

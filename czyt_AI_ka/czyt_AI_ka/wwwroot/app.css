@@ -1,0 +1,312 @@
+﻿html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* brak szarego scrolla po prawej */
+}
+
+/* układ z template'u MAUI (page/sidebar/main) */
+.page {
+    height: 100vh;
+}
+
+    .page > main {
+        height: 100%;
+    }
+
+/* usuwamy boczne paddingi i dajemy pełną wysokość contentu */
+.content {
+    padding-left: 0;
+    padding-right: 0;
+    height: 100%;
+}
+
+/* ====== CZYTANKO ====== */
+
+/* pełny ekran wewnątrz contentu */
+.app-screen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center; /* poziomo */
+    align-items: center; /* pionowo */
+}
+
+/* tło – obrazek */
+.app-screen-czytanie {
+    background-image: url("images/backgrounds/library.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* karta na środku – półprzezroczysta */
+.app-card {
+    width: min(900px, 95vw);
+    max-height: 90vh;
+    background: rgba(255, 255, 255, 0.82); /* bardziej przezroczysta */
+    border-radius: 24px;
+    padding: 20px 24px;
+    overflow-y: auto; /* scroll tylko w karcie */
+    box-shadow: 0 12px 30px rgba(0,0,0,.25);
+}
+
+/* pojedynczy "ekran" wewnątrz karty */
+.czytanie-form {
+    margin-top: 0px;
+}
+
+/* ====== KAFELKI Z IKONKAMI ====== */
+
+.icon-buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 5px 0;
+    max-height: 450px;
+}
+
+.icon-round-btn {
+    width: 100px;
+    height: 60px;
+    border-radius: 16px; /* kwadrat z zaokrągleniem */
+    border: 2px solid #bfbfbf;
+    background-color: white;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+}
+
+    .icon-round-btn img {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+    }
+
+    .icon-round-btn span {
+        display: block;
+        margin-top: 3px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #555;
+        text-align: center;
+        line-height: 1.1;
+    }
+
+    .icon-round-btn.selected {
+        border-color: #4CAF50;
+        box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        background: #f5fff5;
+    }
+
+/* ====== MEMORY ====== */
+
+.memory-container {
+    margin-top: 16px;
+    padding: 10px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.8);
+}
+
+.memory-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 kolumny, 4 rzędy przy 12 kartach */
+    gap: 10px;
+    justify-items: center;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.memory-card {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    border: 2px solid #bfbfbf;
+    background-color: #ffffff;
+    font-size: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease-in-out;
+}
+
+    .memory-card span {
+        font-size: 22px;
+        color: #555;
+    }
+
+    .memory-card.revealed {
+        background-color: #eef5ff;
+    }
+
+    .memory-card.matched {
+        background-color: #e6ffe6;
+        border-color: #4caf50;
+        box-shadow: 0 0 6px rgba(76, 175, 80, 0.7);
+    }
+
+    .memory-card:disabled {
+        cursor: default;
+        opacity: 0.9;
+    }
+
+.memory-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
+
+.memory-restart-btn {
+    padding: 4px 10px;
+    border-radius: 10px;
+    border: 1px solid #bfbfbf;
+    background: #f5f5f5;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+/* responsywność */
+@media (max-width: 768px) {
+    .app-card {
+        width: 95vw;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .icon-buttons-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.reading-textarea {
+    /* około 2x większe niż wcześniej */
+    min-height: 300px; /* startowa wysokość */
+    height: 40vh; /* rośnie do 40% wysokości okna */
+    max-height: 70vh; /* żeby nie rozwalić całego ekranu */
+
+    resize: vertical; /* ⬆⬇ użytkownik może rozciągać w pionie */
+    overflow-y: auto; /* normalny scroll, gdy tekstu jest dużo */
+}
+
+.summary-container {
+    position: relative;
+    padding: 2rem 1rem;
+    overflow: hidden;
+}
+
+.summary-text {
+    font-size: 1.2rem;
+    margin-top: 1rem;
+}
+
+/* Balony */
+.celebration-layer {
+    position: relative;
+    height: 200px;
+    margin-top: 1.5rem;
+}
+
+.balloons .balloon {
+    position: absolute;
+    bottom: -60px;
+    font-size: 2.2rem;
+    animation: float-up 6s infinite ease-in;
+    opacity: 0.9;
+}
+
+.balloon-1 {
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.balloon-2 {
+    left: 45%;
+    animation-delay: 1s;
+}
+
+.balloon-3 {
+    left: 80%;
+    animation-delay: 2s;
+}
+
+@keyframes float-up {
+    0% {
+        transform: translateY(0);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-220px);
+        opacity: 0;
+    }
+}
+
+/* Konfetti */
+.confetti .confetti-piece {
+    position: absolute;
+    top: -20px;
+    font-size: 1.6rem;
+    animation: fall-down 4s infinite linear;
+}
+
+.confetti-1 {
+    left: 20%;
+    animation-delay: 0.3s;
+}
+
+.confetti-2 {
+    left: 50%;
+    animation-delay: 1s;
+}
+
+.confetti-3 {
+    left: 75%;
+    animation-delay: 1.7s;
+}
+
+@keyframes fall-down {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(220px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.scroll-text-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 90%;
+}
+
+.scroll-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    background-color: #0d6efd;
+    color: white;
+}
+
+    .scroll-btn:hover {
+        background-color: #0b5ed7;
+    }
