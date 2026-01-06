@@ -94,8 +94,13 @@
     margin-top: auto;
 }
 
+.user-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
 .user-delete {
-    margin-left: 0.75rem;
     white-space: nowrap;
 }
 
@@ -146,6 +151,11 @@
     border-radius: 12px;
     object-fit: cover;
     border: 1px solid #dcdcdc;
+}
+
+.user-form .validation-message {
+    color: #dc3545;
+    font-size: 0.85rem;
 }
 
 @media (max-width: 900px) {

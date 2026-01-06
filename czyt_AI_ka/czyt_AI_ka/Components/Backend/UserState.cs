@@ -60,6 +60,28 @@ namespace czyt_AI_ka.Components.Backend
             NotifyStateChanged();
         }
 
+        public void UpdateUser(UserProfile updatedUser)
+        {
+            var existingUser = users.FirstOrDefault(user => user.Id == updatedUser.Id);
+            if (existingUser is null)
+            {
+                return;
+            }
+
+            existingUser.Name = updatedUser.Name;
+            existingUser.DateOfBirth = updatedUser.DateOfBirth;
+            existingUser.Gender = updatedUser.Gender;
+            existingUser.ImagePath = updatedUser.ImagePath;
+
+            if (SelectedUser?.Id == existingUser.Id)
+            {
+                SelectedUser = existingUser;
+            }
+
+            SaveUsers();
+            NotifyStateChanged();
+        }
+
         public void SelectUser(Guid userId)
         {
             SelectedUser = users.FirstOrDefault(user => user.Id == userId);
@@ -92,6 +114,14 @@ namespace czyt_AI_ka.Components.Backend
             }
 
             users.Clear();
+            foreach (var user in loadedUsers)
+            {
+                if (user.DateOfBirth == default)
+                {
+                    user.DateOfBirth = DateTime.Today.AddYears(-6);
+                }
+            }
+
             users.AddRange(loadedUsers);
         }
 

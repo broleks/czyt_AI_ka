@@ -30,12 +30,17 @@
                             <img src="@user.ImagePath" alt="Zdjęcie użytkownika @user.Name" />
                             <div>
                                 <div class="user-name">@user.Name</div>
-                                <div class="user-meta">Wiek: @user.Age | @user.Gender</div>
+                                <div class="user-meta">Data urodzenia: @user.DateOfBirth.ToString("dd.MM.yyyy") | @user.Gender</div>
                             </div>
                         </button>
-                        <button class="btn btn-danger user-delete" type="button" @onclick="() => RemoveUser(user)">
-                            Usuń
-                        </button>
+                        <div class="user-actions">
+                            <button class="btn btn-primary user-edit" type="button" @onclick="() => StartEditing(user)">
+                                Edytuj
+                            </button>
+                            <button class="btn btn-danger user-delete" type="button" @onclick="() => RemoveUser(user)">
+                                Usuń
+                            </button>
+                        </div>
                     </div>
                 }
             </div>
@@ -50,11 +55,11 @@
 
     <section class="home-panel">
         <header>
-            <h2>Nowy użytkownik</h2>
-            <p>Uzupełnij dane i wybierz zdjęcie.</p>
+            <h2>@(IsEditing ? "Edycja użytkownika" : "Nowy użytkownik")</h2>
+            <p>@(IsEditing ? "Zaktualizuj dane i zapisz zmiany." : "Uzupełnij dane i wybierz zdjęcie.")</p>
         </header>
 
-        <EditForm Model="newUser" OnValidSubmit="CreateUser" class="user-form">
+        <EditForm Model="newUser" OnValidSubmit="HandleValidSubmit" class="user-form">
             <DataAnnotationsValidator />
 
             <div class="mb-3">
@@ -64,9 +69,9 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label" for="userAge">Wiek</label>
-                <InputNumber id="userAge" class="form-control" @bind-Value="newUser.Age" />
-                <ValidationMessage For="() => newUser.Age" />
+                <label class="form-label" for="userBirthDate">Data urodzenia</label>
+                <InputDate id="userBirthDate" class="form-control" @bind-Value="newUser.DateOfBirth" />
+                <ValidationMessage For="() => newUser.DateOfBirth" />
             </div>
 
             <div class="mb-3">
@@ -93,6 +98,9 @@
                 </div>
                 <div class="custom-upload">
                     <InputFile OnChange="OnCustomImageSelected" accept="image/*" />
+                    <button class="btn btn-outline-danger btn-sm" type="button" @onclick="ClearSelectedImage" disabled="@string.IsNullOrWhiteSpace(newUser.ImagePath)">
+                        Usuń zdjęcie
+                    </button>
                     @if (!string.IsNullOrWhiteSpace(newUser.ImagePath) && newUser.ImagePath.StartsWith("data:image", StringComparison.Ordinal))
                     {
                         <img class="custom-preview" src="@newUser.ImagePath" alt="Podgląd zdjęcia użytkownika" />
@@ -101,7 +109,9 @@
                 <ValidationMessage For="() => newUser.ImagePath" />
             </div>
 
-            <button class="btn btn-primary" style="width:100%" type="submit">Utwórz użytkownika</button>
+            <button class="btn btn-primary" style="width:100%" type="submit">
+                @(IsEditing ? "Zapisz zmiany" : "Utwórz użytkownika")
+            </button>
         </EditForm>
     </section>
 </div>
@@ -118,27 +128,42 @@
     };
 
     private UserFormModel newUser = new();
+    private Guid? editingUserId;
+
+    private bool IsEditing => editingUserId.HasValue;
 
     protected override void OnInitialized()
     {
-        newUser.ImagePath = avatarOptions[0];
+        ResetForm();
     }
 
-    private void CreateUser()
+    private void HandleValidSubmit()
     {
-        var user = new UserProfile
+        if (IsEditing)
         {
-            Name = newUser.Name.Trim(),
-            Age = newUser.Age,
-            Gender = newUser.Gender,
-            ImagePath = newUser.ImagePath
-        };
+            var updatedUser = new UserProfile
+            {
+                Id = editingUserId!.Value,
+                Name = newUser.Name.Trim(),
+                DateOfBirth = newUser.DateOfBirth,
+                Gender = newUser.Gender,
+                ImagePath = newUser.ImagePath
+            };
+            UserState.UpdateUser(updatedUser);
+        }
+        else
+        {
+            var user = new UserProfile
+            {
+                Name = newUser.Name.Trim(),
+                DateOfBirth = newUser.DateOfBirth,
+                Gender = newUser.Gender,
+                ImagePath = newUser.ImagePath
+            };
+            UserState.AddUser(user);
+        }
 
-        UserState.AddUser(user);
-        newUser = new UserFormModel
-        {
-            ImagePath = avatarOptions[0]
-        };
+        ResetForm();
     }
 
     private void SelectUser(UserProfile user)
@@ -146,8 +171,26 @@
         UserState.SelectUser(user.Id);
     }
 
+    private void StartEditing(UserProfile user)
+    {
+        UserState.SelectUser(user.Id);
+        editingUserId = user.Id;
+        newUser = new UserFormModel
+        {
+            Name = user.Name,
+            DateOfBirth = user.DateOfBirth,
+            Gender = user.Gender,
+            ImagePath = user.ImagePath
+        };
+    }
+
     private void RemoveUser(UserProfile user)
     {
+        if (editingUserId == user.Id)
+        {
+            ResetForm();
+        }
+
         UserState.RemoveUser(user.Id);
     }
 
@@ -171,14 +214,29 @@
         newUser.ImagePath = $"data:{file.ContentType};base64,{base64}";
     }
 
+    private void ClearSelectedImage()
+    {
+        newUser.ImagePath = string.Empty;
+    }
+
+    private void ResetForm()
+    {
+        newUser = new UserFormModel
+        {
+            DateOfBirth = DateTime.Today.AddYears(-6),
+            ImagePath = avatarOptions[0]
+        };
+        editingUserId = null;
+    }
+
     private class UserFormModel
     {
         [Required(ErrorMessage = "Podaj imię")]
         [MinLength(2, ErrorMessage = "Imię musi mieć co najmniej 2 znaki")]
         public string Name { get; set; } = string.Empty;
 
-        [Range(1, 120, ErrorMessage = "Podaj poprawny wiek")]
-        public int Age { get; set; } = 6;
+        [Required(ErrorMessage = "Podaj datę urodzenia")]
+        public DateTime DateOfBirth { get; set; } = DateTime.Today.AddYears(-6);
 
         [Required(ErrorMessage = "Wybierz płeć")]
         public string Gender { get; set; } = string.Empty;
