@@ -25,7 +25,7 @@
                 @foreach (var user in UserState.Users)
                 {
                     var isSelected = UserState.SelectedUser?.Id == user.Id;
-                    <div class="user-card @(isSelected ? "selected" : string.Empty)">
+                    <div class="user-card @(isSelected ? "selslvm  cected" : string.Empty)">
                         <button class="user-card-select" type="button" @onclick="() => SelectUser(user)">
                             <img src="@user.ImagePath" alt="Zdjęcie użytkownika @user.Name" />
                             <div>
@@ -41,7 +41,7 @@
             </div>
 
             <div class="selection-actions">
-                <button class="btn btn-outline-secondary" type="button" @onclick="ClearSelection">
+                <button class="btn btn-outline-secondary" style="width:100%; margin-bottom:15px" type="button" @onclick="ClearSelection">
                     Odznacz użytkownika
                 </button>
             </div>
@@ -101,7 +101,7 @@
                 <ValidationMessage For="() => newUser.ImagePath" />
             </div>
 
-            <button class="btn btn-primary" type="submit">Utwórz użytkownika</button>
+            <button class="btn btn-primary" style="width:100%" type="submit">Utwórz użytkownika</button>
         </EditForm>
     </section>
 </div>
