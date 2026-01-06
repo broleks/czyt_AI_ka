@@ -199,6 +199,15 @@
     overflow: hidden;
 }
 
+.user-context-banner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.75);
+    color: #333;
+    font-weight: 500;
+}
+
 .summary-text {
     font-size: 1.2rem;
     margin-top: 1rem;

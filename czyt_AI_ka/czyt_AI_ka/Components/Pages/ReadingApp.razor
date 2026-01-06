@@ -5,10 +5,23 @@
 @using OpenAI
 @using System.Text.Json
 @inject IJSRuntime JS
+@inject UserState UserState
 @inject czyt_AI_ka.Components.Backend.Clients.ChatGptClient ChatGptClient
 
 <div class="app-screen app-screen-czytanie">
     <div class="app-card">
+        @if (UserState.SelectedUser is null)
+        {
+            <div class="alert alert-warning user-context-banner">
+                Wybierz użytkownika na stronie startowej, aby zapisać postępy.
+            </div>
+        }
+        else
+        {
+            <div class="user-context-banner">
+                Użytkownik: <strong>@UserState.SelectedUser.Name</strong>
+            </div>
+        }
 
         <!-- EKRAN 1 – USTAWIANIE BAJKI -->
         <div class="czytanie-form" hidden="@isScrreen1Hidden">

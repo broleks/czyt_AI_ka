@@ -1,4 +1,5 @@
-﻿using czyt_AI_ka.Components.Backend.Clients;
+﻿using czyt_AI_ka.Components.Backend;
+using czyt_AI_ka.Components.Backend.Clients;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +25,7 @@ namespace czyt_AI_ka
             .AddJsonFile("appsettings.Development.json", optional: true);
 
             builder.Services.AddSingleton<ChatGptClient>();
+            builder.Services.AddSingleton<UserState>();
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();
