@@ -1,5 +1,156 @@
 ﻿@page "/"
+@using System.ComponentModel.DataAnnotations
+@using czyt_AI_ka.Components.Backend
+@using czyt_AI_ka.Components.Backend.Models
+@inject UserState UserState
 
-<h1>Hello, world!</h1>
+<div class="home-layout">
+    <section class="home-panel">
+        <header>
+            <h2>Lista użytkowników</h2>
+            <p>Wybierz użytkownika, aby kontynuować pracę.</p>
+        </header>
 
-Welcome to your new app.
+        @if (UserState.Users.Count == 0)
+        {
+            <div class="empty-state">
+                Brak użytkowników. Utwórz nowy profil po prawej stronie.
+            </div>
+        }
+        else
+        {
+            <div class="user-list">
+                @foreach (var user in UserState.Users)
+                {
+                    var isSelected = UserState.SelectedUser?.Id == user.Id;
+                    <button class="user-card @(isSelected ? "selected" : string.Empty)"
+                            @onclick="() => SelectUser(user)">
+                        <img src="@user.ImagePath" alt="Zdjęcie użytkownika @user.Name" />
+                        <div>
+                            <div class="user-name">@user.Name</div>
+                            <div class="user-meta">Wiek: @user.Age | @user.Gender</div>
+                        </div>
+                    </button>
+                }
+            </div>
+
+            <div class="selection-actions">
+                <button class="btn btn-outline-secondary" type="button" @onclick="ClearSelection">
+                    Odznacz użytkownika
+                </button>
+            </div>
+        }
+    </section>
+
+    <section class="home-panel">
+        <header>
+            <h2>Nowy użytkownik</h2>
+            <p>Uzupełnij dane i wybierz zdjęcie.</p>
+        </header>
+
+        <EditForm Model="newUser" OnValidSubmit="CreateUser" class="user-form">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label" for="userName">Imię</label>
+                <InputText id="userName" class="form-control" @bind-Value="newUser.Name" />
+                <ValidationMessage For="() => newUser.Name" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="userAge">Wiek</label>
+                <InputNumber id="userAge" class="form-control" @bind-Value="newUser.Age" />
+                <ValidationMessage For="() => newUser.Age" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="userGender">Płeć</label>
+                <InputSelect id="userGender" class="form-select" @bind-Value="newUser.Gender">
+                    <option value="">Wybierz</option>
+                    <option value="Dziewczynka">Dziewczynka</option>
+                    <option value="Chłopiec">Chłopiec</option>
+                    <option value="Inna">Inna</option>
+                </InputSelect>
+                <ValidationMessage For="() => newUser.Gender" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Wybierz zdjęcie</label>
+                <div class="avatar-grid">
+                    @foreach (var avatar in avatarOptions)
+                    {
+                        <label class="avatar-option @(newUser.ImagePath == avatar ? "selected" : string.Empty)">
+                            <input type="radio" name="avatar" value="@avatar" @onchange="() => newUser.ImagePath = avatar" checked="@(newUser.ImagePath == avatar)" />
+                            <img src="@avatar" alt="Avatar użytkownika" />
+                        </label>
+                    }
+                </div>
+                <ValidationMessage For="() => newUser.ImagePath" />
+            </div>
+
+            <button class="btn btn-primary" type="submit">Utwórz użytkownika</button>
+        </EditForm>
+    </section>
+</div>
+
+@code {
+    private readonly string[] avatarOptions =
+    {
+        "images/icons/chłopiec.png",
+        "images/icons/dziewczynka.png",
+        "images/icons/kot.png",
+        "images/icons/pies.png",
+        "images/icons/pingwin.png",
+        "images/icons/żółw.png"
+    };
+
+    private UserFormModel newUser = new();
+
+    protected override void OnInitialized()
+    {
+        newUser.ImagePath = avatarOptions[0];
+    }
+
+    private void CreateUser()
+    {
+        var user = new UserProfile
+        {
+            Name = newUser.Name.Trim(),
+            Age = newUser.Age,
+            Gender = newUser.Gender,
+            ImagePath = newUser.ImagePath
+        };
+
+        UserState.AddUser(user);
+        newUser = new UserFormModel
+        {
+            ImagePath = avatarOptions[0]
+        };
+    }
+
+    private void SelectUser(UserProfile user)
+    {
+        UserState.SelectUser(user.Id);
+    }
+
+    private void ClearSelection()
+    {
+        UserState.ClearSelection();
+    }
+
+    private class UserFormModel
+    {
+        [Required(ErrorMessage = "Podaj imię")]
+        [MinLength(2, ErrorMessage = "Imię musi mieć co najmniej 2 znaki")]
+        public string Name { get; set; } = string.Empty;
+
+        [Range(1, 120, ErrorMessage = "Podaj poprawny wiek")]
+        public int Age { get; set; } = 6;
+
+        [Required(ErrorMessage = "Wybierz płeć")]
+        public string Gender { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Wybierz zdjęcie")]
+        public string ImagePath { get; set; } = string.Empty;
+    }
+}
