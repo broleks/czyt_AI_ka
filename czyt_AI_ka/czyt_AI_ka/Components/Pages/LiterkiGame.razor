@@ -225,7 +225,7 @@
 
     private void MoveLeft(int index)
     {
-        if (index <= 0)
+        if (index <= 0 || index >= letters.Count)
         {
             return;
         }
@@ -242,7 +242,7 @@
 
     private void MoveRight(int index)
     {
-        if (index >= letters.Count - 1)
+        if (index < 0 || index >= letters.Count - 1)
         {
             return;
         }
