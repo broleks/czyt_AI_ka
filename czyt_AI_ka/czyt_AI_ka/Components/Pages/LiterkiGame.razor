@@ -1,6 +1,5 @@
 ﻿@page "/literki"
 @using System.Timers
-@using Microsoft.AspNetCore.Components.Web
 @implements IDisposable
 
 <div class="app-screen app-screen-literaki">
@@ -52,7 +51,7 @@
         }
         else if (currentScreen == GameScreen.Play && selectedWord is not null)
         {
-            <div class="literaki-form literaki-game" tabindex="0" @onkeydown="HandleKeyDown">
+            <div class="literaki-form literaki-game">
                 <div class="literaki-image">
                     <img src="@GetImagePath(selectedWord)" alt="Obrazek do ułożenia słowa" />
                 </div>
@@ -65,21 +64,18 @@
                 <div class="letters-row">
                     @for (var i = 0; i < letters.Count; i++)
                     {
+                        var index = i;
                         <div class="letter-slot">
-                            <button class="letter-btn @(selectedIndex == i ? "selected" : string.Empty) @(focusedIndex == i ? "focused" : string.Empty)"
-                                    @onclick="() => OnLetterClicked(i)">
-                                @GetDisplayLetter(letters[i])
+                            <button class="letter-btn @(selectedIndex == index ? "selected" : string.Empty) @(focusedIndex == index ? "focused" : string.Empty)"
+                                    @onclick="() => OnLetterClicked(index)">
+                                @GetDisplayLetter(letters[index])
                             </button>
                             <div class="letter-move">
-                                <button class="move-btn" @onclick="() => MoveLeft(i)" disabled="@(i == 0)">◀</button>
-                                <button class="move-btn" @onclick="() => MoveRight(i)" disabled="@(i == letters.Count - 1)">▶</button>
+                                <button class="move-btn" @onclick="() => MoveLeft(index)" disabled="@(index == 0)">◀</button>
+                                <button class="move-btn" @onclick="() => MoveRight(index)" disabled="@(index == letters.Count - 1)">▶</button>
                             </div>
                         </div>
                     }
-                </div>
-
-                <div class="keyboard-hint">
-                    Sterowanie klawiaturą: strzałki wybierają literę, spacja zaznacza, strzałkami wskaż nową pozycję i zatwierdź spacją.
                 </div>
             </div>
         }
@@ -231,36 +227,6 @@
     private void MoveRight(int index)
     {
         MoveLetter(index, index + 1);
-    }
-
-    private void HandleKeyDown(KeyboardEventArgs args)
-    {
-        if (currentScreen != GameScreen.Play || letters.Count == 0)
-        {
-            return;
-        }
-
-        switch (args.Key)
-        {
-            case "ArrowLeft":
-                focusedIndex = Math.Max(0, focusedIndex - 1);
-                break;
-            case "ArrowRight":
-                focusedIndex = Math.Min(letters.Count - 1, focusedIndex + 1);
-                break;
-            case " ":
-            case "Spacebar":
-                if (selectedIndex is null)
-                {
-                    selectedIndex = focusedIndex;
-                }
-                else
-                {
-                    MoveLetter(selectedIndex.Value, focusedIndex);
-                    selectedIndex = null;
-                }
-                break;
-        }
     }
 
     private void MoveLetter(int fromIndex, int toIndex)
