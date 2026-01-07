@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <rect width="200" height="160" rx="24" fill="#F3E8FF" />
+  <circle cx="70" cy="80" r="24" fill="#C8A6E4" />
+  <circle cx="130" cy="80" r="24" fill="#C8A6E4" />
+  <circle cx="100" cy="90" r="35" fill="#DCC2F1" />
+  <circle cx="70" cy="80" r="10" fill="#fff" />
+  <circle cx="130" cy="80" r="10" fill="#fff" />
+  <circle cx="70" cy="80" r="5" fill="#333" />
+  <circle cx="130" cy="80" r="5" fill="#333" />
+  <polygon points="100,95 95,105 105,105" fill="#8C5BAA" />
+  <text x="100" y="145" font-size="26" text-anchor="middle" fill="#6B3F85" font-family="Arial, sans-serif">SOWA</text>
+</svg>
