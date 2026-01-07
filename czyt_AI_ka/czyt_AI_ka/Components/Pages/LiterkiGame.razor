@@ -1,0 +1,362 @@
+﻿@page "/literki"
+@using System.Timers
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+
+<div class="app-screen app-screen-literaki">
+    <div class="app-card literaki-card">
+        @if (currentScreen == GameScreen.Draw)
+        {
+            <div class="literaki-form text-center">
+                <h2>Układanka z literek</h2>
+                <p>Wylosuj obrazek i ułóż właściwe słowo z liter.</p>
+
+                <div class="literaki-options">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" id="caseLower" name="letterCase" value="lower" @onchange="() => caseOption = LetterCase.Lower" checked="@(caseOption == LetterCase.Lower)" />
+                        <label class="form-check-label" for="caseLower">Małe litery</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" id="caseUpper" name="letterCase" value="upper" @onchange="() => caseOption = LetterCase.Upper" checked="@(caseOption == LetterCase.Upper)" />
+                        <label class="form-check-label" for="caseUpper">Duże litery</label>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-lg" @onclick="StartDraw" disabled="@isDrawing">
+                    @((isDrawing ? "Losowanie..." : "Losuj słowo"))
+                </button>
+
+                <div class="literaki-carousel">
+                    <div class="carousel-window">
+                        @if (currentPreview is null)
+                        {
+                            <div class="carousel-placeholder">Kliknij "Losuj słowo", aby rozpocząć.</div>
+                        }
+                        else
+                        {
+                            <img class="carousel-image @(isDrawing ? "carousel-anim" : string.Empty)"
+                                 src="@GetImagePath(currentPreview)"
+                                 alt="Wylosowany obrazek" />
+                            <div class="carousel-word">@GetDisplayWord(currentPreview.Word)</div>
+                        }
+                    </div>
+                </div>
+
+                @if (showPlayButton)
+                {
+                    <button class="btn btn-success btn-lg" @onclick="StartGame">
+                        Graj
+                    </button>
+                }
+            </div>
+        }
+        else if (currentScreen == GameScreen.Play && selectedWord is not null)
+        {
+            <div class="literaki-form literaki-game" tabindex="0" @onkeydown="HandleKeyDown">
+                <div class="literaki-image">
+                    <img src="@GetImagePath(selectedWord)" alt="Obrazek do ułożenia słowa" />
+                </div>
+
+                <div class="literaki-info">
+                    <span>⏱ @elapsedTime.ToString(@"mm\:ss")</span>
+                    <span>🔤 Liczba liter: @letters.Count</span>
+                </div>
+
+                <div class="letters-row">
+                    @for (var i = 0; i < letters.Count; i++)
+                    {
+                        <div class="letter-slot">
+                            <button class="letter-btn @(selectedIndex == i ? "selected" : string.Empty) @(focusedIndex == i ? "focused" : string.Empty)"
+                                    @onclick="() => OnLetterClicked(i)">
+                                @GetDisplayLetter(letters[i])
+                            </button>
+                            <div class="letter-move">
+                                <button class="move-btn" @onclick="() => MoveLeft(i)" disabled="@(i == 0)">◀</button>
+                                <button class="move-btn" @onclick="() => MoveRight(i)" disabled="@(i == letters.Count - 1)">▶</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="keyboard-hint">
+                    Sterowanie klawiaturą: strzałki wybierają literę, spacja zaznacza/odznacza, strzałki przesuwają zaznaczoną literę.
+                </div>
+            </div>
+        }
+        else if (currentScreen == GameScreen.Summary && selectedWord is not null)
+        {
+            <div class="czytanie-form">
+                <div class="summary-container text-center">
+                    <h2>Gratulacje! 🎉</h2>
+                    <p class="summary-text">
+                        Udało Ci się ułożyć słowo <strong>@GetDisplayWord(selectedWord.Word)</strong>.
+                    </p>
+                    <p class="summary-text">
+                        Twój czas: <strong>@elapsedTime.ToString(@"mm\:ss")</strong> &middot;
+                        Liczba liter: <strong>@selectedWord.Word.Length</strong>
+                    </p>
+                    <button class="btn btn-primary mt-3" @onclick="RestartProcess">
+                        Jeszcze raz?
+                    </button>
+
+                    <div class="celebration-layer">
+                        <div class="balloons">
+                            <span class="balloon balloon-1">🎈</span>
+                            <span class="balloon balloon-2">🎈</span>
+                            <span class="balloon balloon-3">🎈</span>
+                        </div>
+                        <div class="confetti">
+                            <span class="confetti-piece confetti-1">🎉</span>
+                            <span class="confetti-piece confetti-2">✨</span>
+                            <span class="confetti-piece confetti-3">🎊</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly List<WordEntry> wordEntries = new()
+    {
+        new("pies"),
+        new("zamek"),
+        new("kot"),
+        new("dom"),
+        new("ryba"),
+        new("auto"),
+        new("sowa"),
+        new("balon")
+    };
+
+    private GameScreen currentScreen = GameScreen.Draw;
+    private WordEntry? currentPreview;
+    private WordEntry? selectedWord;
+    private bool isDrawing;
+    private bool showPlayButton;
+    private List<char> letters = new();
+    private int focusedIndex;
+    private int? selectedIndex;
+    private TimeSpan elapsedTime = TimeSpan.Zero;
+    private DateTime gameStartTime;
+    private Timer? gameTimer;
+    private LetterCase caseOption = LetterCase.Lower;
+
+    private async Task StartDraw()
+    {
+        if (isDrawing)
+        {
+            return;
+        }
+
+        isDrawing = true;
+        showPlayButton = false;
+        selectedWord = null;
+        var random = new Random();
+
+        for (var i = 0; i < 20; i++)
+        {
+            currentPreview = wordEntries[random.Next(wordEntries.Count)];
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(120);
+        }
+
+        selectedWord = currentPreview;
+        isDrawing = false;
+        showPlayButton = true;
+    }
+
+    private void StartGame()
+    {
+        if (selectedWord is null)
+        {
+            return;
+        }
+
+        currentScreen = GameScreen.Play;
+        PrepareLetters();
+        StartTimer();
+    }
+
+    private void PrepareLetters()
+    {
+        if (selectedWord is null)
+        {
+            return;
+        }
+
+        var random = new Random();
+        letters = selectedWord.Word.ToCharArray().OrderBy(_ => random.Next()).ToList();
+
+        if (string.Equals(new string(letters.ToArray()), selectedWord.Word, StringComparison.OrdinalIgnoreCase))
+        {
+            letters.Reverse();
+        }
+
+        focusedIndex = 0;
+        selectedIndex = null;
+    }
+
+    private void StartTimer()
+    {
+        elapsedTime = TimeSpan.Zero;
+        gameStartTime = DateTime.UtcNow;
+        gameTimer?.Stop();
+        gameTimer?.Dispose();
+
+        gameTimer = new Timer(1000);
+        gameTimer.Elapsed += OnTimerElapsed;
+        gameTimer.AutoReset = true;
+        gameTimer.Start();
+    }
+
+    private void OnTimerElapsed(object? sender, ElapsedEventArgs args)
+    {
+        elapsedTime = DateTime.UtcNow - gameStartTime;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLetterClicked(int index)
+    {
+        focusedIndex = index;
+        selectedIndex = selectedIndex == index ? null : index;
+    }
+
+    private void MoveLeft(int index)
+    {
+        if (index <= 0)
+        {
+            return;
+        }
+
+        (letters[index - 1], letters[index]) = (letters[index], letters[index - 1]);
+        focusedIndex = index - 1;
+        if (selectedIndex == index)
+        {
+            selectedIndex = index - 1;
+        }
+
+        CheckCompletion();
+    }
+
+    private void MoveRight(int index)
+    {
+        if (index >= letters.Count - 1)
+        {
+            return;
+        }
+
+        (letters[index + 1], letters[index]) = (letters[index], letters[index + 1]);
+        focusedIndex = index + 1;
+        if (selectedIndex == index)
+        {
+            selectedIndex = index + 1;
+        }
+
+        CheckCompletion();
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (currentScreen != GameScreen.Play || letters.Count == 0)
+        {
+            return;
+        }
+
+        switch (args.Key)
+        {
+            case "ArrowLeft":
+                if (selectedIndex is null)
+                {
+                    focusedIndex = Math.Max(0, focusedIndex - 1);
+                }
+                else
+                {
+                    MoveLeft(selectedIndex.Value);
+                    selectedIndex = Math.Max(0, selectedIndex.Value - 1);
+                }
+                break;
+            case "ArrowRight":
+                if (selectedIndex is null)
+                {
+                    focusedIndex = Math.Min(letters.Count - 1, focusedIndex + 1);
+                }
+                else
+                {
+                    MoveRight(selectedIndex.Value);
+                    selectedIndex = Math.Min(letters.Count - 1, selectedIndex.Value + 1);
+                }
+                break;
+            case " ":
+            case "Spacebar":
+                selectedIndex = selectedIndex is null ? focusedIndex : null;
+                break;
+        }
+    }
+
+    private void CheckCompletion()
+    {
+        if (selectedWord is null)
+        {
+            return;
+        }
+
+        var currentWord = new string(letters.ToArray());
+        if (string.Equals(currentWord, selectedWord.Word, StringComparison.OrdinalIgnoreCase))
+        {
+            FinishGame();
+        }
+    }
+
+    private void FinishGame()
+    {
+        elapsedTime = DateTime.UtcNow - gameStartTime;
+        gameTimer?.Stop();
+        gameTimer?.Dispose();
+        currentScreen = GameScreen.Summary;
+        showPlayButton = false;
+    }
+
+    private void RestartProcess()
+    {
+        gameTimer?.Stop();
+        gameTimer?.Dispose();
+        currentScreen = GameScreen.Draw;
+        showPlayButton = false;
+        isDrawing = false;
+        currentPreview = null;
+        selectedWord = null;
+        letters = new List<char>();
+        elapsedTime = TimeSpan.Zero;
+    }
+
+    private string GetImagePath(WordEntry entry) => $"images/literaki/{entry.Word}.svg";
+
+    private string GetDisplayLetter(char letter)
+        => caseOption == LetterCase.Upper ? char.ToUpper(letter).ToString() : char.ToLower(letter).ToString();
+
+    private string GetDisplayWord(string word)
+        => caseOption == LetterCase.Upper ? word.ToUpperInvariant() : word.ToLowerInvariant();
+
+    private sealed record WordEntry(string Word);
+
+    private enum GameScreen
+    {
+        Draw,
+        Play,
+        Summary
+    }
+
+    private enum LetterCase
+    {
+        Lower,
+        Upper
+    }
+
+    public void Dispose()
+    {
+        gameTimer?.Stop();
+        gameTimer?.Dispose();
+    }
+}

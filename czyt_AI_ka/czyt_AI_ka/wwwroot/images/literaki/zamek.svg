@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <rect width="200" height="160" rx="24" fill="#E7F1FF" />
+  <rect x="40" y="70" width="120" height="60" fill="#B0C7E6" stroke="#6B7FA6" stroke-width="3" />
+  <rect x="55" y="50" width="30" height="30" fill="#B0C7E6" stroke="#6B7FA6" stroke-width="3" />
+  <rect x="115" y="50" width="30" height="30" fill="#B0C7E6" stroke="#6B7FA6" stroke-width="3" />
+  <rect x="90" y="90" width="20" height="40" fill="#6B7FA6" />
+  <text x="100" y="145" font-size="24" text-anchor="middle" fill="#3D4F73" font-family="Arial, sans-serif">ZAMEK</text>
+</svg>
