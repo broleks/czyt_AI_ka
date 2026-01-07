@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <title>Mini Pac-Man</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(circle at top, #202040 0, #050510 60%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #fff;
+        }
+
+        #game-wrapper {
+            padding: 16px 18px 20px 18px;
+            background: rgba(5, 5, 20, 0.95);
+            border-radius: 18px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+            text-align: center;
+        }
+
+        #title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #000;
+            border-radius: 12px;
+            image-rendering: pixelated;
+        }
+
+        #hud {
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            font-size: 14px;
+        }
+
+            #hud span.value {
+                font-weight: 700;
+            }
+
+        #message {
+            margin-top: 6px;
+            font-size: 12px;
+            opacity: 0.9;
+            min-height: 1em;
+        }
+
+        #help {
+            margin-top: 8px;
+            font-size: 11px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <div id="title">Mini Pac-Man</div>
+        <canvas id="game"></canvas>
+        <div id="hud">
+            <div>Punkty: <span id="score" class="value">0</span></div>
+            <div>Życia: <span id="lives" class="value">3</span></div>
+        </div>
+        <div id="message"></div>
+        <div id="help">Sterowanie: strzałki lub WASD. Zjedz wszystkie kropki i uciekaj przed duchem.</div>
+    </div>
+
+    <script>
+        // --- USTAWIENIA GRY ---
+        const TILE_SIZE = 24;
+
+        // 1 = ściana, 0 = kropka, 2 = pusta droga, P = start Pac-Mana, G = start ducha
+        const baseMap = [
+            "1111111111111111111",
+            "1000000000100000001",
+            "1011110110101111101",
+            "1020010100101000201",
+            "1011010111111011101",
+            "100001000P000000001",
+            "1011010111111011101",
+            "1020010100001000201",
+            "1011110110101111101",
+            "1000000000G00000001",
+            "1111111111111111111"
+        ];
+
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        const rows = baseMap.length;
+        const cols = baseMap[0].length;
+
+        canvas.width = cols * TILE_SIZE;
+        canvas.height = rows * TILE_SIZE;
+
+        const scoreEl = document.getElementById("score");
+        const livesEl = document.getElementById("lives");
+        const messageEl = document.getElementById("message");
+
+        let map;
+        let pellets;
+        let remainingPellets;
+        let pacman;
+        let ghost;
+        let pacmanStart;
+        let ghostStart;
+
+        let score = 0;
+        let lives = 3;
+        let resetGamePending = false;
+
+        const STEP_TIME = 150; // ms – tempo kroku
+        let lastTime = 0;
+        let stepAccum = 0;
+
+        function setMessage(text) {
+            messageEl.textContent = text || "";
+        }
+
+        function initGame(resetScoreAndLives) {
+            map = baseMap.slice();
+            pellets = [];
+            remainingPellets = 0;
+
+            pacman = null;
+            ghost = null;
+
+            for (let y = 0; y < rows; y++) {
+                pellets[y] = [];
+                for (let x = 0; x < cols; x++) {
+                    const ch = map[y][x];
+                    let hasPellet = false;
+
+                    if (ch === "0") {
+                        hasPellet = true;
+                    } else if (ch === "P") {
+                        pacman = { x, y, dirX: 0, dirY: 0, nextDirX: 0, nextDirY: 0 };
+                        pacmanStart = { x, y };
+                    } else if (ch === "G") {
+                        ghost = { x, y, dirX: 0, dirY: -1 };
+                        ghostStart = { x, y };
+                    }
+
+                    if (hasPellet) {
+                        remainingPellets++;
+                    }
+                    pellets[y][x] = hasPellet;
+                }
+            }
+
+            if (resetScoreAndLives) {
+                score = 0;
+                lives = 3;
+                scoreEl.textContent = score;
+                livesEl.textContent = lives;
+            }
+
+            resetGamePending = false;
+            setMessage("Zjedz wszystkie kropki i uciekaj przed duchem.");
+        }
+
+        function isWall(x, y) {
+            if (x < 0 || x >= cols || y < 0 || y >= rows) return true;
+            return map[y][x] === "1";
+        }
+
+        function updatePacman() {
+            if (!pacman) return;
+
+            // obsługa planowanej zmiany kierunku
+            if (pacman.nextDirX !== pacman.dirX || pacman.nextDirY !== pacman.dirY) {
+                const tx = pacman.x + pacman.nextDirX;
+                const ty = pacman.y + pacman.nextDirY;
+                if (!isWall(tx, ty)) {
+                    pacman.dirX = pacman.nextDirX;
+                    pacman.dirY = pacman.nextDirY;
+                }
+            }
+
+            const newX = pacman.x + pacman.dirX;
+            const newY = pacman.y + pacman.dirY;
+
+            if (!isWall(newX, newY)) {
+                pacman.x = newX;
+                pacman.y = newY;
+
+                // zjedzenie kropki
+                if (pellets[newY][newX]) {
+                    pellets[newY][newX] = false;
+                    score += 10;
+                    scoreEl.textContent = score;
+                    remainingPellets--;
+
+                    if (remainingPellets === 0) {
+                        setMessage("Wygrana! Naciśnij dowolny klawisz, aby zagrać ponownie.");
+                        resetGamePending = true;
+                    }
+                }
+            } else {
+                // zatrzymanie na ścianie
+                pacman.dirX = 0;
+                pacman.dirY = 0;
+            }
+        }
+
+        function updateGhost() {
+            if (!ghost) return;
+
+            const targetX = ghost.x + ghost.dirX;
+            const targetY = ghost.y + ghost.dirY;
+
+            if (isWall(targetX, targetY)) {
+                const dirs = [
+                    { dx: 1, dy: 0 },
+                    { dx: -1, dy: 0 },
+                    { dx: 0, dy: 1 },
+                    { dx: 0, dy: -1 }
+                ];
+
+                const options = [];
+                for (const d of dirs) {
+                    const tx = ghost.x + d.dx;
+                    const ty = ghost.y + d.dy;
+                    if (!isWall(tx, ty) && !(d.dx === -ghost.dirX && d.dy === -ghost.dirY)) {
+                        options.push(d);
+                    }
+                }
+
+                if (options.length > 0) {
+                    const choice = options[Math.floor(Math.random() * options.length)];
+                    ghost.dirX = choice.dx;
+                    ghost.dirY = choice.dy;
+                } else {
+                    ghost.dirX = -ghost.dirX;
+                    ghost.dirY = -ghost.dirY;
+                }
+            }
+
+            ghost.x += ghost.dirX;
+            ghost.y += ghost.dirY;
+        }
+
+        function loseLife() {
+            lives--;
+            livesEl.textContent = lives;
+
+            if (lives <= 0) {
+                setMessage("Koniec gry! Naciśnij dowolny klawisz, aby zacząć od nowa.");
+                resetGamePending = true;
+                return;
+            }
+
+            setMessage("Uważaj! Straciłeś życie.");
+            pacman.x = pacmanStart.x;
+            pacman.y = pacmanStart.y;
+            pacman.dirX = 0;
+            pacman.dirY = 0;
+            pacman.nextDirX = 0;
+            pacman.nextDirY = 0;
+
+            ghost.x = ghostStart.x;
+            ghost.y = ghostStart.y;
+            ghost.dirX = 0;
+            ghost.dirY = -1;
+        }
+
+        function update() {
+            if (resetGamePending) return;
+
+            updatePacman();
+            updateGhost();
+
+            if (pacman && ghost && pacman.x === ghost.x && pacman.y === ghost.y) {
+                loseLife();
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // plansza + kropki
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (map[y][x] === "1") {
+                        ctx.fillStyle = "#0033cc";
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+
+                    if (pellets[y][x]) {
+                        ctx.fillStyle = "#ffb8ae";
+                        ctx.beginPath();
+                        ctx.arc(
+                            x * TILE_SIZE + TILE_SIZE / 2,
+                            y * TILE_SIZE + TILE_SIZE / 2,
+                            3,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Pac-Man
+            if (pacman) {
+                const px = pacman.x * TILE_SIZE + TILE_SIZE / 2;
+                const py = pacman.y * TILE_SIZE + TILE_SIZE / 2;
+                const r = TILE_SIZE / 2 - 2;
+
+                ctx.fillStyle = "#ffd800";
+                ctx.beginPath();
+                ctx.arc(px, py, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // duch
+            if (ghost) {
+                const gx = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+                const gy = ghost.y * TILE_SIZE + TILE_SIZE / 2;
+                const r = TILE_SIZE / 2 - 2;
+
+                ctx.fillStyle = "#ff0040";
+                ctx.beginPath();
+                ctx.arc(gx, gy, r, Math.PI, 0);
+                ctx.lineTo(gx + r, gy + r);
+                ctx.lineTo(gx - r, gy + r);
+                ctx.closePath();
+                ctx.fill();
+
+                // oczka
+                ctx.fillStyle = "#fff";
+                ctx.beginPath();
+                ctx.arc(gx - 5, gy - 2, 3, 0, Math.PI * 2);
+                ctx.arc(gx + 5, gy - 2, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#000";
+                ctx.beginPath();
+                ctx.arc(gx - 5, gy - 2, 1.5, 0, Math.PI * 2);
+                ctx.arc(gx + 5, gy - 2, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            stepAccum += dt;
+            while (stepAccum >= STEP_TIME) {
+                update();
+                stepAccum -= STEP_TIME;
+            }
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Sterowanie
+        window.addEventListener("keydown", (e) => {
+            if (resetGamePending) {
+                initGame(true);
+                return;
+            }
+
+            if (!pacman) return;
+
+            switch (e.key) {
+                case "ArrowUp":
+                case "w":
+                case "W":
+                    pacman.nextDirX = 0;
+                    pacman.nextDirY = -1;
+                    break;
+                case "ArrowDown":
+                case "s":
+                case "S":
+                    pacman.nextDirX = 0;
+                    pacman.nextDirY = 1;
+                    break;
+                case "ArrowLeft":
+                case "a":
+                case "A":
+                    pacman.nextDirX = -1;
+                    pacman.nextDirY = 0;
+                    break;
+                case "ArrowRight":
+                case "d":
+                case "D":
+                    pacman.nextDirX = 1;
+                    pacman.nextDirY = 0;
+                    break;
+            }
+        });
+
+        // start
+        initGame(true);
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

@@ -1,10 +1,12 @@
 ﻿@page "/counter"
 
-<h1>Counter</h1>
-
-<p role="status">Current count: @currentCount</p>
-
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<div class="container">
+    <div class="pacman-container" style="display:flex;justify-content:center;margin-top:20px;">
+        <iframe src="games/pacman.html"
+                style="border:none;width:500px;height:360px;border-radius:18px;overflow:hidden;">
+        </iframe>
+    </div>
+</div>
 
 @code {
     private int currentCount = 0;
