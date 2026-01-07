@@ -79,7 +79,7 @@
                 </div>
 
                 <div class="keyboard-hint">
-                    Sterowanie klawiaturą: strzałki wybierają literę, spacja zaznacza/odznacza, strzałki przesuwają zaznaczoną literę.
+                    Sterowanie klawiaturą: strzałki wybierają literę, spacja zaznacza, strzałkami wskaż nową pozycję i zatwierdź spacją.
                 </div>
             </div>
         }
@@ -225,36 +225,12 @@
 
     private void MoveLeft(int index)
     {
-        if (index <= 0 || index >= letters.Count)
-        {
-            return;
-        }
-
-        (letters[index - 1], letters[index]) = (letters[index], letters[index - 1]);
-        focusedIndex = index - 1;
-        if (selectedIndex == index)
-        {
-            selectedIndex = index - 1;
-        }
-
-        CheckCompletion();
+        MoveLetter(index, index - 1);
     }
 
     private void MoveRight(int index)
     {
-        if (index < 0 || index >= letters.Count - 1)
-        {
-            return;
-        }
-
-        (letters[index + 1], letters[index]) = (letters[index], letters[index + 1]);
-        focusedIndex = index + 1;
-        if (selectedIndex == index)
-        {
-            selectedIndex = index + 1;
-        }
-
-        CheckCompletion();
+        MoveLetter(index, index + 1);
     }
 
     private void HandleKeyDown(KeyboardEventArgs args)
@@ -267,32 +243,64 @@
         switch (args.Key)
         {
             case "ArrowLeft":
-                if (selectedIndex is null)
-                {
-                    focusedIndex = Math.Max(0, focusedIndex - 1);
-                }
-                else
-                {
-                    MoveLeft(selectedIndex.Value);
-                    selectedIndex = Math.Max(0, selectedIndex.Value - 1);
-                }
+                focusedIndex = Math.Max(0, focusedIndex - 1);
                 break;
             case "ArrowRight":
-                if (selectedIndex is null)
-                {
-                    focusedIndex = Math.Min(letters.Count - 1, focusedIndex + 1);
-                }
-                else
-                {
-                    MoveRight(selectedIndex.Value);
-                    selectedIndex = Math.Min(letters.Count - 1, selectedIndex.Value + 1);
-                }
+                focusedIndex = Math.Min(letters.Count - 1, focusedIndex + 1);
                 break;
             case " ":
             case "Spacebar":
-                selectedIndex = selectedIndex is null ? focusedIndex : null;
+                if (selectedIndex is null)
+                {
+                    selectedIndex = focusedIndex;
+                }
+                else
+                {
+                    MoveLetter(selectedIndex.Value, focusedIndex);
+                    selectedIndex = null;
+                }
                 break;
         }
+    }
+
+    private void MoveLetter(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || fromIndex >= letters.Count || toIndex < 0 || toIndex >= letters.Count)
+        {
+            return;
+        }
+
+        if (fromIndex == toIndex)
+        {
+            return;
+        }
+
+        var letter = letters[fromIndex];
+        letters.RemoveAt(fromIndex);
+        letters.Insert(toIndex, letter);
+
+        focusedIndex = toIndex;
+        if (selectedIndex.HasValue)
+        {
+            selectedIndex = AdjustIndexForMove(selectedIndex.Value, fromIndex, toIndex);
+        }
+
+        CheckCompletion();
+    }
+
+    private static int AdjustIndexForMove(int index, int fromIndex, int toIndex)
+    {
+        if (index == fromIndex)
+        {
+            return toIndex;
+        }
+
+        if (fromIndex < toIndex)
+        {
+            return index > fromIndex && index <= toIndex ? index - 1 : index;
+        }
+
+        return index >= toIndex && index < fromIndex ? index + 1 : index;
     }
 
     private void CheckCompletion()
