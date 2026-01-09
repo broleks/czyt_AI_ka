@@ -1,0 +1,247 @@
+@page "/twoje-gry"
+@using System.Timers
+@implements IDisposable
+
+<div class="app-screen app-screen-games">
+    @if (selectedGame is null)
+    {
+        <div class="app-card game-selection-card">
+            <h2 class="game-selection-title">Twoje gry</h2>
+            <p class="game-selection-subtitle">Wybierz mini-grę i zacznij zabawę.</p>
+
+            <div class="games-grid">
+                @foreach (var game in games)
+                {
+                    <button class="game-tile" @onclick="() => SelectGame(game.Type)">
+                        <img class="game-tile-image" src="@game.ImagePath" alt="@game.Name" />
+                        <div class="game-tile-content">
+                            <h3>@game.Name</h3>
+                            <p>@game.Description</p>
+                        </div>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="game-fullscreen">
+            <div class="game-toolbar">
+                <button class="btn btn-secondary" @onclick="BackToSelection">Powrót do wyboru gier</button>
+            </div>
+            <div class="game-stage">
+                @if (selectedGame == GameType.Memory)
+                {
+                    <div class="memory-container memory-container-full">
+                        <div class="memory-grid">
+                            @foreach (var card in memoryCards)
+                            {
+                                <button class="memory-card
+                                       @(card.IsMatched ? "matched" : "")
+                                       @((card.IsRevealed && !card.IsMatched) ? " revealed" : "")"
+                                        @onclick="() => OnCardClicked(card)">
+                                    @if (card.IsRevealed || card.IsMatched)
+                                    {
+                                        @card.Emoji
+                                    }
+                                    else
+                                    {
+                                        <span>?</span>
+                                    }
+                                </button>
+                            }
+                        </div>
+                        <hr />
+                        <div class="memory-info">
+                            <div>
+                                Wynik: @memoryScore
+                                <span style="margin-left:10px;">
+                                    Czas: @gameTimeElapsed.ToString(@"mm\:ss\.f")
+                                </span>
+
+                                @if (AllMatched)
+                                {
+                                    <span> – Brawo! Wygrałeś/aś 🎉</span>
+                                }
+                            </div>
+
+                            <button class="memory-restart-btn" @onclick="ResetMemoryGame">
+                                Zagraj jeszcze raz
+                            </button>
+                        </div>
+                    </div>
+                }
+                else if (selectedGame == GameType.Pacman)
+                {
+                    <iframe class="pacman-frame" src="games/pacman.html" title="Pac Man"></iframe>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private enum GameType
+    {
+        Memory,
+        Pacman
+    }
+
+    private sealed record GameCard(GameType Type, string Name, string Description, string ImagePath);
+
+    private readonly List<GameCard> games = new()
+    {
+        new GameCard(GameType.Memory, "Memory", "Odkrywaj pary i trenuj pamięć.", "images/games/memory.svg"),
+        new GameCard(GameType.Pacman, "Pac Man", "Zbieraj punkty i uciekaj przed duchami.", "images/games/pacman.svg")
+    };
+
+    private GameType? selectedGame;
+
+    private void SelectGame(GameType game)
+    {
+        selectedGame = game;
+        if (selectedGame == GameType.Memory)
+        {
+            ResetMemoryGame();
+        }
+    }
+
+    private void BackToSelection()
+    {
+        selectedGame = null;
+        StopTimer();
+    }
+
+    private class MemoryCard
+    {
+        public int Index { get; set; }
+        public string Emoji { get; set; } = "";
+        public bool IsRevealed { get; set; }
+        public bool IsMatched { get; set; }
+    }
+
+    private DateTime? gameStartTime;
+    private TimeSpan gameTimeElapsed = TimeSpan.Zero;
+    private Timer? gameTimer;
+
+    private List<MemoryCard> memoryCards = new();
+    private MemoryCard? firstRevealed;
+    private MemoryCard? secondRevealed;
+    private bool isCheckingPair;
+    private int memoryScore;
+
+    private bool AllMatched => memoryCards.All(c => c.IsMatched);
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ResetMemoryGame();
+    }
+
+    private void ResetMemoryGame()
+    {
+        var rnd = new Random();
+
+        var emojis = new[] { "🐱", "🦆", "🦁", "🐶", "🐰", "🐻" };
+        var pairs = emojis.SelectMany(e => new[] { e, e }).ToList();
+
+        pairs = pairs.OrderBy(_ => rnd.Next()).ToList();
+
+        memoryCards = new List<MemoryCard>();
+
+        for (int i = 0; i < pairs.Count; i++)
+        {
+            var emoji = pairs[i];
+            memoryCards.Add(new MemoryCard
+            {
+                Index = i,
+                Emoji = emoji,
+                IsRevealed = false,
+                IsMatched = false
+            });
+        }
+
+        firstRevealed = null;
+        secondRevealed = null;
+        isCheckingPair = false;
+        memoryScore = 0;
+
+        gameStartTime = null;
+        gameTimeElapsed = TimeSpan.Zero;
+
+        StopTimer();
+    }
+
+    private async Task OnCardClicked(MemoryCard card)
+    {
+        if (gameStartTime == null)
+        {
+            gameStartTime = DateTime.Now;
+            gameTimer = new Timer(200);
+            gameTimer.Elapsed += (s, e) =>
+            {
+                gameTimeElapsed = DateTime.Now - gameStartTime.Value;
+                InvokeAsync(StateHasChanged);
+            };
+            gameTimer.Start();
+        }
+
+        if (isCheckingPair || card.IsMatched || card.IsRevealed)
+        {
+            return;
+        }
+
+        card.IsRevealed = true;
+
+        if (firstRevealed == null)
+        {
+            firstRevealed = card;
+        }
+        else if (secondRevealed == null && card != firstRevealed)
+        {
+            secondRevealed = card;
+            isCheckingPair = true;
+
+            await Task.Delay(700);
+
+            if (firstRevealed.Emoji == secondRevealed.Emoji &&
+                !string.IsNullOrEmpty(firstRevealed.Emoji))
+            {
+                firstRevealed.IsMatched = true;
+                secondRevealed.IsMatched = true;
+                memoryScore++;
+            }
+            else
+            {
+                firstRevealed.IsRevealed = false;
+                secondRevealed.IsRevealed = false;
+            }
+
+            firstRevealed = null;
+            secondRevealed = null;
+            isCheckingPair = false;
+        }
+
+        StateHasChanged();
+
+        if (AllMatched)
+        {
+            StopTimer();
+        }
+    }
+
+    private void StopTimer()
+    {
+        if (gameTimer != null)
+        {
+            gameTimer.Stop();
+            gameTimer.Dispose();
+            gameTimer = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        StopTimer();
+    }
+}

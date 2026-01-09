@@ -1,0 +1,108 @@
+.app-screen-games {
+    background: linear-gradient(135deg, rgba(255, 249, 236, 0.9), rgba(234, 244, 255, 0.95));
+}
+
+.game-selection-card {
+    max-width: 980px;
+    width: min(980px, 95vw);
+}
+
+.game-selection-title {
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.game-selection-subtitle {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #4b5563;
+}
+
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.2rem;
+}
+
+.game-tile {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    border: 2px solid rgba(32, 53, 96, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 18px;
+    padding: 1rem;
+    text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.game-tile:hover,
+.game-tile:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.game-tile-image {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+}
+
+.game-tile-content h3 {
+    margin: 0 0 0.35rem 0;
+    font-size: 1.15rem;
+}
+
+.game-tile-content p {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+.game-fullscreen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 2rem;
+    box-sizing: border-box;
+    gap: 1rem;
+}
+
+.game-toolbar {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.game-stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.memory-container-full {
+    width: min(720px, 95vw);
+}
+
+.pacman-frame {
+    width: min(960px, 95vw);
+    height: min(600px, 75vh);
+    border: none;
+    border-radius: 18px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+    background: #000;
+}
+
+@media (max-width: 640px) {
+    .game-fullscreen {
+        padding: 1rem;
+    }
+
+    .game-tile {
+        flex-direction: column;
+        text-align: center;
+    }
+}
