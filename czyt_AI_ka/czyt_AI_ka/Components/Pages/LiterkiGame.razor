@@ -50,6 +50,9 @@
                         <button class="btn btn-warning btn-lg" @onclick="() => StartGame(GameMode.Guess)">
                             Graj zgadywanie
                         </button>
+                        <button class="btn btn-info btn-lg" @onclick="() => StartGame(GameMode.FirstLetter)">
+                            Graj pierwsza
+                        </button>
                     </div>
                 }
             </div>
@@ -111,6 +114,23 @@
                     </div>
                     <div class="keyboard-hint">
                         Wpisz brakującą literę z klawiatury.
+                    </div>
+                }
+                else if (currentMode == GameMode.FirstLetter && firstLetterOptions.Count == 4)
+                {
+                    <div class="letters-row first-letter-options">
+                        @for (var i = 0; i < firstLetterOptions.Count; i++)
+                        {
+                            var index = i;
+                            <button class="letter-btn @GetFirstLetterButtonClass(index)"
+                                    @onclick="() => OnFirstLetterSelected(index)"
+                                    disabled="@(isCompleted)">
+                                @GetDisplayLetter(firstLetterOptions[index])
+                            </button>
+                        }
+                    </div>
+                    <div class="keyboard-hint">
+                        Wybierz pierwszą literę słowa.
                     </div>
                 }
             </div>
@@ -213,6 +233,9 @@
     private bool isCompleted;
     private LetterCase caseOption = LetterCase.Lower;
     private GameMode currentMode = GameMode.Arrange;
+    private List<char> firstLetterOptions = new();
+    private int? firstLetterCorrectIndex;
+    private HashSet<int> firstLetterWrongIndexes = new();
 
     private async Task StartDraw()
     {
@@ -251,9 +274,13 @@
         {
             PrepareLetters();
         }
-        else
+        else if (currentMode == GameMode.Guess)
         {
             PrepareGuess();
+        }
+        else
+        {
+            PrepareFirstLetter();
         }
         StartTimer();
     }
@@ -290,6 +317,40 @@
         var random = new Random();
         letters = selectedWord.Word.ToCharArray().ToList();
         missingIndex = random.Next(selectedWord.Word.Length);
+        guessInput = string.Empty;
+        isCompleted = false;
+        selectedIndex = null;
+        focusedIndex = 0;
+    }
+
+    private void PrepareFirstLetter()
+    {
+        if (selectedWord is null)
+        {
+            return;
+        }
+
+        var random = new Random();
+        var correctLetter = char.ToLowerInvariant(selectedWord.Word[0]);
+        var options = new HashSet<char> { correctLetter };
+        var availableLetters = wordEntries
+            .SelectMany(entry => entry.Word)
+            .Select(char.ToLowerInvariant)
+            .Distinct()
+            .ToList();
+
+        while (options.Count < 4 && availableLetters.Count > 0)
+        {
+            var candidate = availableLetters[random.Next(availableLetters.Count)];
+            options.Add(candidate);
+        }
+
+        firstLetterOptions = options.OrderBy(_ => random.Next()).ToList();
+        firstLetterCorrectIndex = firstLetterOptions.FindIndex(letter => char.ToLowerInvariant(letter) == correctLetter);
+        firstLetterWrongIndexes = new HashSet<int>();
+
+        letters = selectedWord.Word.ToCharArray().ToList();
+        missingIndex = null;
         guessInput = string.Empty;
         isCompleted = false;
         selectedIndex = null;
@@ -416,6 +477,22 @@
         await CheckGuessCompletion();
     }
 
+    private async Task OnFirstLetterSelected(int index)
+    {
+        if (isCompleted || !firstLetterCorrectIndex.HasValue)
+        {
+            return;
+        }
+
+        if (index == firstLetterCorrectIndex.Value)
+        {
+            await FinishGame();
+            return;
+        }
+
+        firstLetterWrongIndexes.Add(index);
+    }
+
     private async Task FinishGame()
     {
         elapsedTime = DateTime.UtcNow - gameStartTime;
@@ -443,6 +520,9 @@
         missingIndex = null;
         guessInput = string.Empty;
         currentMode = GameMode.Arrange;
+        firstLetterOptions = new List<char>();
+        firstLetterCorrectIndex = null;
+        firstLetterWrongIndexes = new HashSet<int>();
     }
 
     private string GetImagePath(WordEntry entry) => $"images/literaki/{entry.Word}.png";
@@ -456,6 +536,16 @@
     private string ApplyCase(string letter)
         => caseOption == LetterCase.Upper ? letter.ToUpperInvariant() : letter.ToLowerInvariant();
 
+    private string GetFirstLetterButtonClass(int index)
+    {
+        if (firstLetterCorrectIndex.HasValue && isCompleted && index == firstLetterCorrectIndex.Value)
+        {
+            return "correct";
+        }
+
+        return firstLetterWrongIndexes.Contains(index) ? "incorrect" : string.Empty;
+    }
+
     private sealed record WordEntry(string Word);
 
     private enum GameScreen
@@ -468,7 +558,8 @@
     private enum GameMode
     {
         Arrange,
-        Guess
+        Guess,
+        FirstLetter
     }
 
     private enum LetterCase

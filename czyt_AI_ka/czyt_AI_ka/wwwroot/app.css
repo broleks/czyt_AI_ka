@@ -198,6 +198,16 @@
     box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
 }
 
+.letter-btn.correct {
+    border-color: #4caf50;
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.45);
+}
+
+.letter-btn.incorrect {
+    border-color: #e53935;
+    box-shadow: 0 0 10px rgba(229, 57, 53, 0.45);
+}
+
 .letter-move {
     display: flex;
     gap: 0.4rem;
