@@ -66,13 +66,13 @@
                     {
                         var index = i;
                         <div class="letter-slot">
-                            <button class="letter-btn @(selectedIndex == index ? "selected" : string.Empty) @(focusedIndex == index ? "focused" : string.Empty)"
+                            <button class="letter-btn @(selectedIndex == index ? "selected" : string.Empty) @(focusedIndex == index ? "focused" : string.Empty) @(isCompleted ? "completed" : string.Empty)"
                                     @onclick="() => OnLetterClicked(index)">
                                 @GetDisplayLetter(letters[index])
                             </button>
                             <div class="letter-move">
-                                <button class="move-btn" @onclick="() => MoveLeft(index)" disabled="@(index == 0)">◀</button>
-                                <button class="move-btn" @onclick="() => MoveRight(index)" disabled="@(index == letters.Count - 1)">▶</button>
+                                <button class="move-btn" @onclick="() => MoveLeft(index)" disabled="@(isCompleted || index == 0)">◀</button>
+                                <button class="move-btn" @onclick="() => MoveRight(index)" disabled="@(isCompleted || index == letters.Count - 1)">▶</button>
                             </div>
                         </div>
                     }
@@ -172,6 +172,7 @@
     private TimeSpan elapsedTime = TimeSpan.Zero;
     private DateTime gameStartTime;
     private Timer? gameTimer;
+    private bool isCompleted;
     private LetterCase caseOption = LetterCase.Lower;
 
     private async Task StartDraw()
@@ -227,6 +228,7 @@
 
         focusedIndex = 0;
         selectedIndex = null;
+        isCompleted = false;
     }
 
     private void StartTimer()
@@ -254,17 +256,17 @@
         selectedIndex = selectedIndex == index ? null : index;
     }
 
-    private void MoveLeft(int index)
+    private async Task MoveLeft(int index)
     {
-        MoveLetter(index, index - 1);
+        await MoveLetter(index, index - 1);
     }
 
-    private void MoveRight(int index)
+    private async Task MoveRight(int index)
     {
-        MoveLetter(index, index + 1);
+        await MoveLetter(index, index + 1);
     }
 
-    private void MoveLetter(int fromIndex, int toIndex)
+    private async Task MoveLetter(int fromIndex, int toIndex)
     {
         if (fromIndex < 0 || fromIndex >= letters.Count || toIndex < 0 || toIndex >= letters.Count)
         {
@@ -286,7 +288,7 @@
             selectedIndex = AdjustIndexForMove(selectedIndex.Value, fromIndex, toIndex);
         }
 
-        CheckCompletion();
+        await CheckCompletion();
     }
 
     private static int AdjustIndexForMove(int index, int fromIndex, int toIndex)
@@ -304,9 +306,9 @@
         return index >= toIndex && index < fromIndex ? index + 1 : index;
     }
 
-    private void CheckCompletion()
+    private async Task CheckCompletion()
     {
-        if (selectedWord is null)
+        if (selectedWord is null || isCompleted)
         {
             return;
         }
@@ -314,15 +316,18 @@
         var currentWord = new string(letters.ToArray());
         if (string.Equals(currentWord, selectedWord.Word, StringComparison.OrdinalIgnoreCase))
         {
-            FinishGame();
+            await FinishGame();
         }
     }
 
-    private void FinishGame()
+    private async Task FinishGame()
     {
         elapsedTime = DateTime.UtcNow - gameStartTime;
         gameTimer?.Stop();
         gameTimer?.Dispose();
+        isCompleted = true;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(2000);
         currentScreen = GameScreen.Summary;
         showPlayButton = false;
     }
@@ -337,6 +342,7 @@
         currentPreview = null;
         selectedWord = null;
         letters = new List<char>();
+        isCompleted = false;
         elapsedTime = TimeSpan.Zero;
     }
 

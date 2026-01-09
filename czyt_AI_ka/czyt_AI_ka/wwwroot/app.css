@@ -175,6 +175,11 @@
     outline-offset: 3px;
 }
 
+.letter-btn.completed {
+    border-color: #4caf50;
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.4);
+}
+
 .letter-move {
     display: flex;
     gap: 0.4rem;
