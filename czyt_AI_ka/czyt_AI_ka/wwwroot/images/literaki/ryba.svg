@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
-  <rect width="200" height="160" rx="24" fill="#E6FAFF" />
-  <ellipse cx="95" cy="85" rx="40" ry="25" fill="#8AD3E6" />
-  <polygon points="135,85 170,60 170,110" fill="#5FB6CC" />
-  <circle cx="80" cy="80" r="5" fill="#333" />
-  <text x="100" y="145" font-size="26" text-anchor="middle" fill="#3B7C8E" font-family="Arial, sans-serif">RYBA</text>
-</svg>

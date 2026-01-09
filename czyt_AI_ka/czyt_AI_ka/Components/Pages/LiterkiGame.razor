@@ -116,14 +116,49 @@
 @code {
     private readonly List<WordEntry> wordEntries = new()
     {
-        new("pies"),
-        new("zamek"),
-        new("kot"),
+        new("boisko"),
+        new("buja"),
+        new("buty"),
+        new("delfin"),
         new("dom"),
+        new("hulajnoga"),
+        new("kaczka"),
+        new("klocki"),
+        new("koparka"),
+        new("kot"),
+        new("koza"),
+        new("krowa"),
+        new("kuchnia"),
+        new("kura"),
+        new("kwiaty"),
+        new("lalka"),
+        new("lis"),
+        new("miś"),
+        new("motyl"),
+        new("mysz"),
+        new("obiad"),
+        new("ogród"),
+        new("owca"),
+        new("pies"),
+        new("piłka"),
+        new("plaża"),
+        new("pociąg"),
+        new("prezent"),
+        new("ptak"),
+        new("rakieta"),
+        new("rekin"),
+        new("rower"),
         new("ryba"),
-        new("auto"),
-        new("sowa"),
-        new("balon")
+        new("rysuje"),
+        new("sarenka"),
+        new("skaczą"),
+        new("słoń"),
+        new("szkoła"),
+        new("układa"),
+        new("wyspa"),
+        new("zając"),
+        new("zebra"),
+        new("żaba")
     };
 
     private GameScreen currentScreen = GameScreen.Draw;
@@ -305,7 +340,7 @@
         elapsedTime = TimeSpan.Zero;
     }
 
-    private string GetImagePath(WordEntry entry) => $"images/literaki/{entry.Word}.svg";
+    private string GetImagePath(WordEntry entry) => $"images/literaki/{entry.Word}.png";
 
     private string GetDisplayLetter(char letter)
         => caseOption == LetterCase.Upper ? char.ToUpper(letter).ToString() : char.ToLower(letter).ToString();

@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
-  <rect width="200" height="160" rx="24" fill="#FFF8E6" />
-  <rect x="40" y="80" width="120" height="35" rx="8" fill="#F4D35E" stroke="#C9A84F" stroke-width="3" />
-  <rect x="60" y="60" width="60" height="25" rx="6" fill="#9BD1FF" />
-  <circle cx="70" cy="120" r="12" fill="#444" />
-  <circle cx="130" cy="120" r="12" fill="#444" />
-  <text x="100" y="145" font-size="26" text-anchor="middle" fill="#8A6A0A" font-family="Arial, sans-serif">AUTO</text>
-</svg>
