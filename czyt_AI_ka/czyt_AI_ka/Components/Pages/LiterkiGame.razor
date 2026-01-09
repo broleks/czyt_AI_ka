@@ -43,9 +43,14 @@
 
                 @if (showPlayButton)
                 {
-                    <button class="btn btn-success btn-lg" @onclick="StartGame">
-                        Graj
-                    </button>
+                    <div class="literaki-play-actions">
+                        <button class="btn btn-success btn-lg" @onclick="() => StartGame(GameMode.Arrange)">
+                            Graj ustawianie
+                        </button>
+                        <button class="btn btn-warning btn-lg" @onclick="() => StartGame(GameMode.Guess)">
+                            Graj zgadywanie
+                        </button>
+                    </div>
                 }
             </div>
         }
@@ -61,22 +66,53 @@
                     <span>🔤 Liczba liter: @letters.Count</span>
                 </div>
 
-                <div class="letters-row">
-                    @for (var i = 0; i < letters.Count; i++)
-                    {
-                        var index = i;
-                        <div class="letter-slot">
-                            <button class="letter-btn @(selectedIndex == index ? "selected" : string.Empty) @(focusedIndex == index ? "focused" : string.Empty) @(isCompleted ? "completed" : string.Empty)"
-                                    @onclick="() => OnLetterClicked(index)">
-                                @GetDisplayLetter(letters[index])
-                            </button>
-                            <div class="letter-move">
-                                <button class="move-btn" @onclick="() => MoveLeft(index)" disabled="@(isCompleted || index == 0)">◀</button>
-                                <button class="move-btn" @onclick="() => MoveRight(index)" disabled="@(isCompleted || index == letters.Count - 1)">▶</button>
+                @if (currentMode == GameMode.Arrange)
+                {
+                    <div class="letters-row">
+                        @for (var i = 0; i < letters.Count; i++)
+                        {
+                            var index = i;
+                            <div class="letter-slot">
+                                <button class="letter-btn @(selectedIndex == index ? "selected" : string.Empty) @(focusedIndex == index ? "focused" : string.Empty) @(isCompleted ? "completed" : string.Empty)"
+                                        @onclick="() => OnLetterClicked(index)">
+                                    @GetDisplayLetter(letters[index])
+                                </button>
+                                <div class="letter-move">
+                                    <button class="move-btn" @onclick="() => MoveLeft(index)" disabled="@(isCompleted || index == 0)">◀</button>
+                                    <button class="move-btn" @onclick="() => MoveRight(index)" disabled="@(isCompleted || index == letters.Count - 1)">▶</button>
+                                </div>
                             </div>
-                        </div>
-                    }
-                </div>
+                        }
+                    </div>
+                }
+                else if (currentMode == GameMode.Guess && missingIndex.HasValue)
+                {
+                    <div class="letters-row">
+                        @for (var i = 0; i < selectedWord.Word.Length; i++)
+                        {
+                            <div class="letter-slot">
+                                @if (i == missingIndex.Value)
+                                {
+                                    <input class="letter-btn letter-input @(isCompleted ? "completed" : string.Empty)"
+                                           value="@guessInput"
+                                           maxlength="1"
+                                           aria-label="Wpisz brakującą literę"
+                                           @oninput="OnGuessInput"
+                                           disabled="@(isCompleted)" />
+                                }
+                                else
+                                {
+                                    <button class="letter-btn @(isCompleted ? "completed" : string.Empty)" disabled>
+                                        @GetDisplayLetter(selectedWord.Word[i])
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="keyboard-hint">
+                        Wpisz brakującą literę z klawiatury.
+                    </div>
+                }
             </div>
         }
         else if (currentScreen == GameScreen.Summary && selectedWord is not null)
@@ -169,11 +205,14 @@
     private List<char> letters = new();
     private int focusedIndex;
     private int? selectedIndex;
+    private int? missingIndex;
+    private string guessInput = string.Empty;
     private TimeSpan elapsedTime = TimeSpan.Zero;
     private DateTime gameStartTime;
     private Timer? gameTimer;
     private bool isCompleted;
     private LetterCase caseOption = LetterCase.Lower;
+    private GameMode currentMode = GameMode.Arrange;
 
     private async Task StartDraw()
     {
@@ -199,15 +238,23 @@
         showPlayButton = true;
     }
 
-    private void StartGame()
+    private void StartGame(GameMode mode)
     {
         if (selectedWord is null)
         {
             return;
         }
 
+        currentMode = mode;
         currentScreen = GameScreen.Play;
-        PrepareLetters();
+        if (currentMode == GameMode.Arrange)
+        {
+            PrepareLetters();
+        }
+        else
+        {
+            PrepareGuess();
+        }
         StartTimer();
     }
 
@@ -229,6 +276,24 @@
         focusedIndex = 0;
         selectedIndex = null;
         isCompleted = false;
+        missingIndex = null;
+        guessInput = string.Empty;
+    }
+
+    private void PrepareGuess()
+    {
+        if (selectedWord is null)
+        {
+            return;
+        }
+
+        var random = new Random();
+        letters = selectedWord.Word.ToCharArray().ToList();
+        missingIndex = random.Next(selectedWord.Word.Length);
+        guessInput = string.Empty;
+        isCompleted = false;
+        selectedIndex = null;
+        focusedIndex = 0;
     }
 
     private void StartTimer()
@@ -320,6 +385,37 @@
         }
     }
 
+    private async Task CheckGuessCompletion()
+    {
+        if (selectedWord is null || isCompleted || !missingIndex.HasValue)
+        {
+            return;
+        }
+
+        var targetLetter = selectedWord.Word[missingIndex.Value].ToString();
+        if (string.Equals(guessInput, targetLetter, StringComparison.OrdinalIgnoreCase))
+        {
+            guessInput = GetDisplayLetter(selectedWord.Word[missingIndex.Value]);
+            await FinishGame();
+        }
+    }
+
+    private async Task OnGuessInput(ChangeEventArgs args)
+    {
+        var rawValue = args.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            guessInput = string.Empty;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var trimmed = rawValue.Trim();
+        var letter = trimmed.Length > 0 ? trimmed[0].ToString() : string.Empty;
+        guessInput = ApplyCase(letter);
+        await CheckGuessCompletion();
+    }
+
     private async Task FinishGame()
     {
         elapsedTime = DateTime.UtcNow - gameStartTime;
@@ -344,6 +440,9 @@
         letters = new List<char>();
         isCompleted = false;
         elapsedTime = TimeSpan.Zero;
+        missingIndex = null;
+        guessInput = string.Empty;
+        currentMode = GameMode.Arrange;
     }
 
     private string GetImagePath(WordEntry entry) => $"images/literaki/{entry.Word}.png";
@@ -354,6 +453,9 @@
     private string GetDisplayWord(string word)
         => caseOption == LetterCase.Upper ? word.ToUpperInvariant() : word.ToLowerInvariant();
 
+    private string ApplyCase(string letter)
+        => caseOption == LetterCase.Upper ? letter.ToUpperInvariant() : letter.ToLowerInvariant();
+
     private sealed record WordEntry(string Word);
 
     private enum GameScreen
@@ -361,6 +463,12 @@
         Draw,
         Play,
         Summary
+    }
+
+    private enum GameMode
+    {
+        Arrange,
+        Guess
     }
 
     private enum LetterCase
