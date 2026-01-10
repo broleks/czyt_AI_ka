@@ -1,0 +1,62 @@
+﻿@using czyt_AI_ka.Components.Backend
+@inject UserState UserState
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a style="text-align:center" class="navbar-brand" href="">_______   Czyt_AI_Ka   _______</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        @if (UserState.SelectedUser is not null)
+        {
+            <div class="nav-item px-3 user-card-nav">
+                <div class="user-card">
+                    <div class="user-card-name">@UserState.SelectedUser.Name</div>
+                    <div class="user-card-image">
+                        <img src="@UserState.SelectedUser.ImagePath" alt="Zdjęcie użytkownika @UserState.SelectedUser.Name" />
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-custom" href="reading">
+                <span class="bi bi-book nav-icon" aria-hidden="true"></span>
+                <span>Czytanie</span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-custom" href="literki">
+                <span class="bi bi-textarea-t nav-icon" aria-hidden="true"></span>
+                <span>Literki</span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-custom" href="twoje-gry">
+                <span class="bi bi-collection-play nav-icon" aria-hidden="true"></span>
+                <span>Gry</span>
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        UserState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        UserState.OnChange -= StateHasChanged;
+    }
+}

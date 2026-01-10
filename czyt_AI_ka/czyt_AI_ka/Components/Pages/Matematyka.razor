@@ -1,0 +1,334 @@
+@page "/matematyka"
+@using System.Timers
+@implements IDisposable
+
+<div class="app-screen app-screen-matematyka">
+    <div class="app-card math-card">
+        @if (selectedGame is null)
+        {
+            <div class="math-selection">
+                <h2 class="math-selection-title">Matematyka</h2>
+                <p class="math-selection-subtitle">Wybierz tryb gry i rozpocznij ćwiczenia.</p>
+
+                <div class="math-games-grid">
+                    <button class="math-game-tile" @onclick="() => SelectGame(MathGame.PlusMinus)">
+                        <img class="math-game-image" src="images/games/math-plus-minus.svg" alt="Gra Plus i Minus" />
+                        <div class="math-game-content">
+                            <h3>Plus i Minus</h3>
+                            <p>Dodawanie i odejmowanie z zakresu 1-100. Wpisuj poprawne wyniki.</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        }
+        else if (currentScreen == MathScreen.Setup)
+        {
+            <div class="math-setup text-center">
+                <h2>Plus i Minus</h2>
+                <p>Wybierz zakres liczb, aby rozpocząć rozwiązywanie zadań.</p>
+
+                <div class="math-range-options">
+                    @foreach (var option in rangeOptions)
+                    {
+                        <label class="math-range-option">
+                            <input type="radio"
+                                   name="mathRange"
+                                   value="@option.Max"
+                                   checked="@(selectedMax == option.Max)"
+                                   @onchange="() => selectedMax = option.Max" />
+                            <span>@option.Label</span>
+                        </label>
+                    }
+                </div>
+
+                <div class="math-setup-actions">
+                    <button class="btn btn-primary btn-lg" @onclick="StartGame">Zaczynamy</button>
+                    <button class="btn btn-outline-secondary btn-lg" @onclick="BackToSelection">Powrót</button>
+                </div>
+            </div>
+        }
+        else if (currentScreen == MathScreen.Play)
+        {
+            <div class="math-play">
+                <div class="math-info">
+                    <span>⏱ @elapsedTime.ToString(@"mm\:ss")</span>
+                    <span>✅ @CorrectCount / @TotalTasks</span>
+                </div>
+
+                <div class="math-task-board">
+                    <div class="math-column">
+                        <h3>Odejmowanie</h3>
+                        @foreach (var task in subtractionTasks)
+                        {
+                            <div class="math-task">
+                                <div class="math-equation">@task.Left - @task.Right =</div>
+                                <input class="math-input @GetInputClass(task)"
+                                       type="number"
+                                       inputmode="numeric"
+                                       value="@task.Input"
+                                       @oninput="(e) => OnAnswerInput(task, e)"
+                                       disabled="@isGameCompleted" />
+                            </div>
+                        }
+                    </div>
+
+                    <div class="math-column">
+                        <h3>Dodawanie</h3>
+                        @foreach (var task in additionTasks)
+                        {
+                            <div class="math-task">
+                                <div class="math-equation">@task.Left + @task.Right =</div>
+                                <input class="math-input @GetInputClass(task)"
+                                       type="number"
+                                       inputmode="numeric"
+                                       value="@task.Input"
+                                       @oninput="(e) => OnAnswerInput(task, e)"
+                                       disabled="@isGameCompleted" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        else if (currentScreen == MathScreen.Summary)
+        {
+            <div class="czytanie-form">
+                <div class="summary-container text-center">
+                    <h2>Gratulacje! 🎉</h2>
+                    <p class="summary-text">
+                        Ukończyłeś/aś wszystkie zadania z gry Plus i Minus.
+                    </p>
+                    <p class="summary-text">
+                        Twój czas: <strong>@elapsedTime.ToString(@"mm\:ss")</strong> &middot;
+                        Poprawne odpowiedzi: <strong>@TotalTasks / @TotalTasks</strong>
+                    </p>
+                    <button class="btn btn-primary mt-3" @onclick="RestartGame">Jeszcze raz?</button>
+
+                    <div class="celebration-layer">
+                        <div class="balloons">
+                            <span class="balloon balloon-1">🎈</span>
+                            <span class="balloon balloon-2">🎈</span>
+                            <span class="balloon balloon-3">🎈</span>
+                        </div>
+                        <div class="confetti">
+                            <span class="confetti-piece confetti-1">🎉</span>
+                            <span class="confetti-piece confetti-2">✨</span>
+                            <span class="confetti-piece confetti-3">🎊</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private enum MathGame
+    {
+        PlusMinus
+    }
+
+    private enum MathScreen
+    {
+        Setup,
+        Play,
+        Summary
+    }
+
+    private sealed record RangeOption(string Label, int Max);
+
+    private sealed class MathTask
+    {
+        public int Left { get; init; }
+        public int Right { get; init; }
+        public char Operator { get; init; }
+        public string Input { get; set; } = string.Empty;
+
+        public int Answer => Operator == '+' ? Left + Right : Left - Right;
+
+        public bool IsCorrect
+        {
+            get
+            {
+                if (int.TryParse(Input, out var value))
+                {
+                    return value == Answer;
+                }
+
+                return false;
+            }
+        }
+    }
+
+    private readonly List<RangeOption> rangeOptions = new()
+    {
+        new RangeOption("1-10", 10),
+        new RangeOption("1-20", 20),
+        new RangeOption("1-100", 100)
+    };
+
+    private MathGame? selectedGame;
+    private MathScreen currentScreen = MathScreen.Setup;
+    private int selectedMax = 10;
+
+    private readonly int minRange = 1;
+    private List<MathTask> additionTasks = new();
+    private List<MathTask> subtractionTasks = new();
+
+    private DateTime? gameStartTime;
+    private TimeSpan elapsedTime = TimeSpan.Zero;
+    private Timer? gameTimer;
+    private bool isGameCompleted;
+
+    private int TotalTasks => additionTasks.Count + subtractionTasks.Count;
+    private int CorrectCount => additionTasks.Concat(subtractionTasks).Count(task => task.IsCorrect);
+
+    private void SelectGame(MathGame game)
+    {
+        selectedGame = game;
+        currentScreen = MathScreen.Setup;
+        ResetGameState();
+    }
+
+    private void BackToSelection()
+    {
+        StopTimer();
+        selectedGame = null;
+        ResetGameState();
+    }
+
+    private void StartGame()
+    {
+        GenerateTasks();
+        elapsedTime = TimeSpan.Zero;
+        isGameCompleted = false;
+        currentScreen = MathScreen.Play;
+        StartTimer();
+    }
+
+    private void RestartGame()
+    {
+        StopTimer();
+        ResetGameState();
+        currentScreen = MathScreen.Setup;
+    }
+
+    private void ResetGameState()
+    {
+        additionTasks = new List<MathTask>();
+        subtractionTasks = new List<MathTask>();
+        elapsedTime = TimeSpan.Zero;
+        isGameCompleted = false;
+        gameStartTime = null;
+    }
+
+    private void GenerateTasks()
+    {
+        var random = new Random();
+
+        additionTasks = Enumerable.Range(0, 5)
+            .Select(_ => CreateAdditionTask(random))
+            .ToList();
+
+        subtractionTasks = Enumerable.Range(0, 5)
+            .Select(_ => CreateSubtractionTask(random))
+            .ToList();
+    }
+
+    private MathTask CreateAdditionTask(Random random)
+    {
+        var left = random.Next(minRange, selectedMax + 1);
+        var right = random.Next(minRange, selectedMax + 1);
+
+        return new MathTask
+        {
+            Left = left,
+            Right = right,
+            Operator = '+'
+        };
+    }
+
+    private MathTask CreateSubtractionTask(Random random)
+    {
+        var left = random.Next(minRange, selectedMax + 1);
+        var right = random.Next(minRange, selectedMax + 1);
+
+        if (right > left)
+        {
+            (left, right) = (right, left);
+        }
+
+        return new MathTask
+        {
+            Left = left,
+            Right = right,
+            Operator = '-'
+        };
+    }
+
+    private async Task OnAnswerInput(MathTask task, ChangeEventArgs args)
+    {
+        if (isGameCompleted)
+        {
+            return;
+        }
+
+        task.Input = args.Value?.ToString()?.Trim() ?? string.Empty;
+
+        if (TotalTasks > 0 && additionTasks.Concat(subtractionTasks).All(t => t.IsCorrect))
+        {
+            isGameCompleted = true;
+            StopTimer();
+            await Task.Delay(2000);
+            currentScreen = MathScreen.Summary;
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string GetInputClass(MathTask task)
+    {
+        if (string.IsNullOrWhiteSpace(task.Input))
+        {
+            return string.Empty;
+        }
+
+        return task.IsCorrect ? "correct" : "incorrect";
+    }
+
+    private void StartTimer()
+    {
+        StopTimer();
+        gameStartTime = DateTime.Now;
+        gameTimer = new Timer(200);
+        gameTimer.Elapsed += (_, _) =>
+        {
+            if (gameStartTime.HasValue)
+            {
+                elapsedTime = DateTime.Now - gameStartTime.Value;
+                InvokeAsync(StateHasChanged);
+            }
+        };
+        gameTimer.Start();
+    }
+
+    private void StopTimer()
+    {
+        if (gameTimer is null)
+        {
+            return;
+        }
+
+        gameTimer.Stop();
+        gameTimer.Dispose();
+        gameTimer = null;
+    }
+
+    public void Dispose()
+    {
+        StopTimer();
+    }
+}
