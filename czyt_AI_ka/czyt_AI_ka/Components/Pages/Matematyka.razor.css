@@ -1,0 +1,183 @@
+.app-screen-matematyka {
+    background: linear-gradient(135deg, rgba(255, 247, 232, 0.95), rgba(230, 245, 255, 0.95));
+}
+
+.math-card {
+    width: min(980px, 95vw);
+}
+
+.math-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.math-selection-title {
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.math-selection-subtitle {
+    text-align: center;
+    color: #4b5563;
+}
+
+.math-games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.2rem;
+}
+
+.math-game-tile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 2px solid rgba(32, 53, 96, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 18px;
+    padding: 1rem;
+    text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.math-game-tile:hover,
+.math-game-tile:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.math-game-image {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+}
+
+.math-game-content h3 {
+    margin: 0 0 0.35rem 0;
+    font-size: 1.15rem;
+}
+
+.math-game-content p {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+.math-setup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.math-range-options {
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.math-range-option {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 0.5rem 0.8rem;
+    border-radius: 12px;
+}
+
+.math-setup-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.math-play {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.math-info {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #2f3e66;
+}
+
+.math-task-board {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+.math-column {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 18px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.math-column h3 {
+    text-align: center;
+    color: #2f3e66;
+    margin-bottom: 0.35rem;
+}
+
+.math-task {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.math-equation {
+    white-space: nowrap;
+}
+
+.math-input {
+    width: 90px;
+    height: 54px;
+    border-radius: 14px;
+    border: 2px solid #bfbfbf;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2f3e66;
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.math-input:disabled {
+    background: #f5f5f5;
+}
+
+.math-input.correct {
+    border-color: #4caf50;
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.45);
+}
+
+.math-input.incorrect {
+    border-color: #e53935;
+    box-shadow: 0 0 10px rgba(229, 57, 53, 0.45);
+}
+
+@media (max-width: 768px) {
+    .math-task-board {
+        grid-template-columns: 1fr;
+    }
+
+    .math-game-tile {
+        flex-direction: column;
+        text-align: center;
+    }
+}
