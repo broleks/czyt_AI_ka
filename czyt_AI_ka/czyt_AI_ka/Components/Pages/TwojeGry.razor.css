@@ -1,5 +1,8 @@
 .app-screen-games {
-    background: linear-gradient(135deg, rgba(255, 249, 236, 0.9), rgba(234, 244, 255, 0.95));
+    background-image: url("images/backgrounds/salongier.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .game-selection-card {

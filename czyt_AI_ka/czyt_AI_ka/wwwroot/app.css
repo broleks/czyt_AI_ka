@@ -42,7 +42,7 @@
 /* ====== LITERKI ====== */
 .app-screen-literaki {
     /* Można podmienić tło przez CSS: --literki-background */
-    background-image: var(--literki-background, url("images/backgrounds/library.png"));
+    background-image: var(--literki-background, url("images/backgrounds/literki.png"));
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -515,3 +515,14 @@
     .scroll-btn:hover {
         background-color: #0b5ed7;
     }
+
+.nav-link-custom {
+    display: flex;
+    align-items: center; /* pionowe wyśrodkowanie */
+    gap: 10px; /* odstęp między ikoną a tekstem */
+}
+
+.nav-icon {
+    font-size: 1.4rem; /* rozmiar ikony */
+    line-height: 1; /* zapobiega "opadaniu" ikony */
+}
