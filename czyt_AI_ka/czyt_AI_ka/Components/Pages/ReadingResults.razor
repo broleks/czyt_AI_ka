@@ -77,21 +77,27 @@
                 else
                 {
                     <div class="chart-wrapper">
-                        <svg viewBox="0 0 @ChartWidth @ChartHeight" role="img" aria-label="Wykres słów na minutę">
-                            <polyline points="@ChartPolyline"
-                                      fill="none"
-                                      stroke="#1b6ec2"
-                                      stroke-width="3" />
-                            @foreach (var point in chartPoints)
-                            {
-                                <circle cx="@point.X" cy="@point.Y" r="4" fill="#4caf50">
-                                    <title>@($"{point.Label}: {Math.Round(point.WordsPerMinute)} sł/min")</title>
-                                </circle>
-                            }
-                        </svg>
-                        <div class="chart-axis">
-                            <span>@chartStartLabel</span>
-                            <span>@chartEndLabel</span>
+                        <div class="chart-axis-labels">
+                            <span class="axis-label axis-label-y">Oś X (pionowa): ilość słów na minutę</span>
+                            <div class="chart-plot-area">
+                                <svg viewBox="0 0 @ChartWidth @ChartHeight" role="img" aria-label="Wykres słów na minutę">
+                                    <polyline points="@ChartPolyline"
+                                              fill="none"
+                                              stroke="#1b6ec2"
+                                              stroke-width="3" />
+                                    @foreach (var point in chartPoints)
+                                    {
+                                        <circle cx="@point.X" cy="@point.Y" r="4" fill="#4caf50">
+                                            <title>@($"{point.Label}: {Math.Round(point.WordsPerMinute)} sł/min")</title>
+                                        </circle>
+                                    }
+                                </svg>
+                                <div class="chart-axis">
+                                    <span>@chartStartLabel</span>
+                                    <span>@chartEndLabel</span>
+                                </div>
+                                <div class="axis-label axis-label-x">Oś Y (pozioma): data rozgrywki</div>
+                            </div>
                         </div>
                     </div>
                 }
