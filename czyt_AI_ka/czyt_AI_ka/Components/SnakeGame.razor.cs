@@ -32,6 +32,9 @@ public partial class SnakeGame : IAsyncDisposable
     [Parameter]
     public bool SoundDefault { get; set; } = true;
 
+    [Parameter]
+    public bool AutoStart { get; set; } = true;
+
     [Inject]
     private IJSRuntime JsRuntime { get; set; } = default!;
 
@@ -70,6 +73,11 @@ public partial class SnakeGame : IAsyncDisposable
                 soundEnabled = _soundEnabled
             },
             _dotNetRef);
+
+        if (AutoStart)
+        {
+            await _snakeApi.InvokeVoidAsync("start");
+        }
     }
 
     private async Task StartGame()

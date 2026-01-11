@@ -38,10 +38,10 @@
                     Dźwięk
                 </MudSwitch>
             </div>
-            <MudSelect T="string" Label="Poziom trudności" Dense="true" Value="_difficulty" ValueChanged="OnDifficultyChanged">
+            <MudSelect T="string" Label="Poziom trudności" Dense="true" Value="@_difficulty" ValueChanged="OnDifficultyChanged">
                 @foreach (var option in DifficultyOptions)
                 {
-                    <MudSelectItem Value="@option.Value">@option.Label</MudSelectItem>
+                    <MudSelectItem T="string" Value="@option.Value">@option.Label</MudSelectItem>
                 }
             </MudSelect>
         </div>
