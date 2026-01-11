@@ -75,6 +75,10 @@
                 {
                     <iframe class="pacman-frame" src="games/pacman.html" title="Pac Man"></iframe>
                 }
+                else if (selectedGame == GameType.Snake)
+                {
+                    <SnakeGame Height="520" KidModeDefault="true" DifficultyDefault="Easy" />
+                }
             </div>
         </div>
     }
@@ -84,7 +88,8 @@
     private enum GameType
     {
         Memory,
-        Pacman
+        Pacman,
+        Snake
     }
 
     private sealed record GameCard(GameType Type, string Name, string Description, string ImagePath);
@@ -92,7 +97,8 @@
     private readonly List<GameCard> games = new()
     {
         new GameCard(GameType.Memory, "Memory", "Odkrywaj pary i trenuj pamięć.", "images/games/memory.svg"),
-        new GameCard(GameType.Pacman, "Pac Man", "Zbieraj punkty i uciekaj przed duchami.", "images/games/pacman.svg")
+        new GameCard(GameType.Pacman, "Pac Man", "Zbieraj punkty i uciekaj przed duchami.", "images/games/pacman.svg"),
+        new GameCard(GameType.Snake, "Wąż", "Zbieraj owoce i rośnij!", "images/games/snake.svg")
     };
 
     private GameType? selectedGame;

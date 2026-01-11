@@ -1,0 +1,95 @@
+.snake-card {
+    width: min(960px, 95vw);
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 20px;
+    box-shadow: 0 16px 28px rgba(21, 40, 72, 0.2);
+}
+
+.snake-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.snake-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.snake-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.snake-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.snake-switches {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.snake-canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 240px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #edf6ff;
+    border: 2px solid rgba(50, 90, 130, 0.2);
+}
+
+.snake-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+}
+
+.snake-dpad {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(64px, 1fr));
+    grid-template-rows: repeat(3, 56px);
+    gap: 0.5rem;
+    justify-items: center;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.snake-dpad .mud-button-root {
+    width: 100%;
+    height: 100%;
+    font-size: 1.2rem;
+}
+
+.snake-help {
+    margin-top: 0.75rem;
+    font-size: 0.95rem;
+    color: #3b4b62;
+}
+
+.snake-overlay-button {
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .snake-card {
+        width: 100%;
+    }
+
+    .snake-dpad {
+        grid-template-columns: repeat(3, minmax(56px, 1fr));
+        grid-template-rows: repeat(3, 52px);
+    }
+}
