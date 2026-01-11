@@ -76,7 +76,7 @@
                     <span>✅ @CorrectCount / @TotalTasks</span>
                 </div>
 
-                <div class="math-task-board @(selectedGame == MathGame.Multiplication ? "math-task-board-single" : string.Empty)">
+                <div class="math-task-board @(selectedGame is MathGame.Multiplication or MathGame.Arithmetic ? "math-task-board-single" : string.Empty)">
                     @if (selectedGame == MathGame.PlusMinus)
                     {
                         <div class="math-column">
@@ -368,7 +368,7 @@
     private int selectedMax = 10;
 
     private const int MinRange = 1;
-    private const int MultiplicationMin = 0;
+    private const int MultiplicationMin = 1;
     private const int MultiplicationMax = 9;
     private List<MathTask> additionTasks = new();
     private List<MathTask> subtractionTasks = new();
@@ -402,7 +402,7 @@
     private string SelectedGameDescription => selectedGame switch
     {
         MathGame.Arithmetic => "Rozwiązuj wyrażenia z 6 liczbami, aby odnaleźć prawidłowy wynik.",
-        MathGame.Multiplication => "Rozłóż mnożenie na dodawanie i podaj prawidłowy wynik (liczby 0-9).",
+        MathGame.Multiplication => "Rozłóż mnożenie na dodawanie i podaj prawidłowy wynik (liczby 1-9).",
         _ => "Wybierz zakres liczb, aby rozpocząć rozwiązywanie zadań."
     };
 
