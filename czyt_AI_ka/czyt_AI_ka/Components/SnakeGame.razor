@@ -5,9 +5,15 @@
         <div class="snake-header">
             <MudText Typo="Typo.h5">Wąż</MudText>
             <div class="snake-stats">
-                <MudChip Color="Color.Success" Variant="Variant.Filled">Wynik: @_score</MudChip>
-                <MudChip Color="Color.Info" Variant="Variant.Outlined">Rekord: @_highScore</MudChip>
-                <MudChip Color="Color.Primary" Variant="Variant.Outlined">Prędkość: @_speedLabel</MudChip>
+                <MudChip T="string" Color="Color.Success" Variant="Variant.Filled">
+                    Wynik: @_score
+                </MudChip>
+                <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">
+                    Rekord: @_highScore
+                </MudChip>
+                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined">
+                    Prędkość: @_speedLabel
+                </MudChip>
             </div>
         </div>
 
@@ -24,10 +30,11 @@
                 }
             </div>
             <div class="snake-switches">
-                <MudSwitch Checked="_kidMode" Color="Color.Primary" CheckedChanged="OnKidModeChanged">
+                <MudSwitch T="bool" Value="@_kidMode" ValueChanged="OnKidModeChanged" Color="Color.Primary">
                     Tryb dziecka
                 </MudSwitch>
-                <MudSwitch Checked="_soundEnabled" Color="Color.Secondary" CheckedChanged="OnSoundChanged">
+
+                <MudSwitch T="bool" Value="@_soundEnabled" ValueChanged="OnSoundChanged" Color="Color.Secondary">
                     Dźwięk
                 </MudSwitch>
             </div>
@@ -45,11 +52,11 @@
 
         <div class="snake-dpad">
             <span></span>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"up\"))">⬆️</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("up"))">⬆️</MudButton>
             <span></span>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"left\"))">⬅️</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"down\"))">⬇️</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"right\"))">➡️</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("left"))">⬅️</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("down"))">⬇️</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("right"))">➡️</MudButton>
             <span></span>
             <span></span>
         </div>
