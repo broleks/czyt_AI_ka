@@ -1,0 +1,68 @@
+.results-card {
+    width: min(1100px, 95vw);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.results-header h2 {
+    margin-bottom: 0.25rem;
+}
+
+.results-header p {
+    margin: 0;
+    color: #555;
+}
+
+.results-table {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 16px;
+    padding: 0.5rem 1rem;
+}
+
+.results-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.results-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chart-subtitle {
+    margin: 0;
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.chart-wrapper {
+    background: rgba(255, 255, 255, 0.75);
+    border-radius: 16px;
+    padding: 1rem;
+}
+
+.chart-wrapper svg {
+    width: 100%;
+    height: auto;
+}
+
+.chart-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    color: #666;
+    font-size: 0.85rem;
+}

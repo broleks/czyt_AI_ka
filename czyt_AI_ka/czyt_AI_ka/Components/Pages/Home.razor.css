@@ -98,9 +98,14 @@
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .user-delete {
+    white-space: nowrap;
+}
+
+.user-results {
     white-space: nowrap;
 }
 
