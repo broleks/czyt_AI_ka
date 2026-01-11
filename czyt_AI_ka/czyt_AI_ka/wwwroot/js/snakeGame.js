@@ -186,10 +186,13 @@
             window.addEventListener("keydown", this.boundHandleKeyDown);
             window.addEventListener("resize", this.boundHandleResize);
 
-            this.resizeObserver = new ResizeObserver(() => {
-                this.handleResize();
-            });
-            this.resizeObserver.observe(this.canvas.parentElement ?? this.canvas);
+            this.resizeObserver = null;
+            if (typeof ResizeObserver !== "undefined") {
+                this.resizeObserver = new ResizeObserver(() => {
+                    this.handleResize();
+                });
+                this.resizeObserver.observe(this.canvas.parentElement ?? this.canvas);
+            }
 
             this.reset();
             this.startRenderLoop();
