@@ -32,9 +32,39 @@ namespace czyt_AI_ka.Components.Backend
                 .ToList();
         }
 
+        public IReadOnlyList<LiterkiResult> GetLiterkiResults(Guid userId, LiterkiGameMode mode)
+        {
+            return archive.LiterkiResults
+                .Where(result => result.UserId == userId && result.Mode == mode)
+                .OrderByDescending(result => result.PlayedAt)
+                .ToList();
+        }
+
+        public IReadOnlyList<MathResult> GetMathResults(Guid userId, MathGameMode mode)
+        {
+            return archive.MathResults
+                .Where(result => result.UserId == userId && result.Mode == mode)
+                .OrderByDescending(result => result.PlayedAt)
+                .ToList();
+        }
+
         public void AddReadingResult(ReadingResult result)
         {
             archive.ReadingResults.Add(result);
+            SaveResults();
+            NotifyStateChanged();
+        }
+
+        public void AddLiterkiResult(LiterkiResult result)
+        {
+            archive.LiterkiResults.Add(result);
+            SaveResults();
+            NotifyStateChanged();
+        }
+
+        public void AddMathResult(MathResult result)
+        {
+            archive.MathResults.Add(result);
             SaveResults();
             NotifyStateChanged();
         }
@@ -62,6 +92,18 @@ namespace czyt_AI_ka.Components.Backend
             if (loadedArchive.ReadingResults is not null)
             {
                 archive.ReadingResults.AddRange(loadedArchive.ReadingResults);
+            }
+
+            archive.LiterkiResults.Clear();
+            if (loadedArchive.LiterkiResults is not null)
+            {
+                archive.LiterkiResults.AddRange(loadedArchive.LiterkiResults);
+            }
+
+            archive.MathResults.Clear();
+            if (loadedArchive.MathResults is not null)
+            {
+                archive.MathResults.AddRange(loadedArchive.MathResults);
             }
         }
 

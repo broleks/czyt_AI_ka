@@ -1,5 +1,9 @@
 @page "/matematyka"
 @using System.Timers
+@using czyt_AI_ka.Components.Backend
+@using czyt_AI_ka.Components.Backend.Models
+@inject UserState UserState
+@inject ResultsArchive ResultsArchive
 @implements IDisposable
 
 <div class="app-screen app-screen-matematyka">
@@ -272,6 +276,7 @@
     private TimeSpan elapsedTime = TimeSpan.Zero;
     private Timer? gameTimer;
     private bool isGameCompleted;
+    private bool hasSavedResult;
 
     private int TotalTasks => CurrentTasks.Count();
     private int CorrectCount => CurrentTasks.Count(task => task.IsCorrect);
@@ -314,6 +319,7 @@
         GenerateTasks();
         elapsedTime = TimeSpan.Zero;
         isGameCompleted = false;
+        hasSavedResult = false;
         currentScreen = MathScreen.Play;
         StartTimer();
     }
@@ -333,6 +339,7 @@
         elapsedTime = TimeSpan.Zero;
         isGameCompleted = false;
         gameStartTime = null;
+        hasSavedResult = false;
     }
 
     private void GenerateTasks()
@@ -432,7 +439,12 @@
         if (TotalTasks > 0 && CurrentTasks.All(t => t.IsCorrect))
         {
             isGameCompleted = true;
+            if (gameStartTime.HasValue)
+            {
+                elapsedTime = DateTime.Now - gameStartTime.Value;
+            }
             StopTimer();
+            SaveResultIfNeeded();
             await Task.Delay(2000);
             currentScreen = MathScreen.Summary;
             await InvokeAsync(StateHasChanged);
@@ -479,6 +491,26 @@
         gameTimer.Stop();
         gameTimer.Dispose();
         gameTimer = null;
+    }
+
+    private void SaveResultIfNeeded()
+    {
+        if (hasSavedResult || UserState.SelectedUser is null || selectedGame is null)
+        {
+            return;
+        }
+
+        var result = new MathResult
+        {
+            UserId = UserState.SelectedUser.Id,
+            PlayerName = UserState.SelectedUser.Name,
+            PlayedAt = DateTime.Now,
+            GameDurationSeconds = (int)Math.Round(elapsedTime.TotalSeconds),
+            Mode = selectedGame == MathGame.Arithmetic ? MathGameMode.Arithmetic : MathGameMode.PlusMinus
+        };
+
+        ResultsArchive.AddMathResult(result);
+        hasSavedResult = true;
     }
 
     public void Dispose()

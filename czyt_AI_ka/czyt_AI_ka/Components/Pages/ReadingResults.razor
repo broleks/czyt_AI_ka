@@ -1,3 +1,4 @@
+@page "/results/{UserId:guid}"
 @page "/reading-results/{UserId:guid}"
 @using System.Globalization
 @using czyt_AI_ka.Components.Backend
@@ -11,9 +12,17 @@
         <div class="results-header">
             <div>
                 <h2>Wyniki @(currentUser is null ? string.Empty : $"({currentUser.Name})")</h2>
-                <p>Statystyki gry Czytanie.</p>
+                <p>@resultsDescription</p>
             </div>
-            <button class="btn btn-secondary" @onclick="Close">Zamknij</button>
+            <div class="results-actions">
+                <select class="form-select results-select" @bind="SelectedView">
+                    @foreach (var option in resultOptions)
+                    {
+                        <option value="@option.View">@option.Label</option>
+                    }
+                </select>
+                <button class="btn btn-secondary" @onclick="Close">Zamknij</button>
+            </div>
         </div>
 
         @if (currentUser is null)
@@ -22,7 +31,7 @@
                 Nie znaleziono wybranego użytkownika. Wróć do strony głównej i wybierz profil ponownie.
             </div>
         }
-        else if (readingResults.Count == 0)
+        else if (CurrentResultsCount == 0)
         {
             <div class="empty-state">
                 Brak zapisanych wyników dla tego gracza.
@@ -30,29 +39,54 @@
         }
         else
         {
-            <div class="table-responsive results-table">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th scope="col">Ilość słów</th>
-                            <th scope="col">Czas gry</th>
-                            <th scope="col">Słów / minutę</th>
-                            <th scope="col">Data rozegranej gry</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var result in PaginatedResults)
-                        {
+            @if (SelectedView == ResultsView.Reading)
+            {
+                <div class="table-responsive results-table">
+                    <table class="table table-striped">
+                        <thead>
                             <tr>
-                                <td>@result.WordCount</td>
-                                <td>@FormatDuration(result.GameDuration)</td>
-                                <td>@Math.Round(result.WordsPerMinute)</td>
-                                <td>@result.PlayedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                <th scope="col">Ilość słów</th>
+                                <th scope="col">Czas gry</th>
+                                <th scope="col">Słów / minutę</th>
+                                <th scope="col">Data rozegranej gry</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @foreach (var result in PaginatedReadingResults)
+                            {
+                                <tr>
+                                    <td>@result.WordCount</td>
+                                    <td>@FormatDuration(result.GameDuration)</td>
+                                    <td>@Math.Round(result.WordsPerMinute)</td>
+                                    <td>@result.PlayedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive results-table">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th scope="col">Czas rozwiązania</th>
+                                <th scope="col">Data rozegranej gry</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var result in PaginatedDurationResults)
+                            {
+                                <tr>
+                                    <td>@FormatDuration(TimeSpan.FromSeconds(result.DurationSeconds))</td>
+                                    <td>@result.PlayedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
 
             <div class="results-pagination">
                 <button class="btn btn-outline-secondary" @onclick="PreviousPage" disabled="@(currentPage <= 1)">
@@ -65,8 +99,8 @@
             </div>
 
             <div class="results-chart">
-                <h3>Tempo czytania w czasie</h3>
-                <p class="chart-subtitle">Obserwuj, czy tempo czytania rośnie wraz z kolejnymi grami.</p>
+                <h3>@chartTitle</h3>
+                <p class="chart-subtitle">@chartSubtitle</p>
 
                 @if (chartPoints.Count == 0)
                 {
@@ -78,16 +112,16 @@
                 {
                     <div class="chart-wrapper">
                         <div class="chart-axis-labels">
-                            <span class="axis-label axis-label-y">Oś Y (pionowa): słów na minutę</span>
+                            <span class="axis-label axis-label-y">@chartYAxisLabel</span>
                             <div class="chart-plot-area">
                                 <div class="chart-main">
                                     <div class="chart-y-ticks" aria-hidden="true">
                                         @foreach (var tick in chartYAxisTicks)
                                         {
-                                            <span>@tick</span>
+                                            <span>@FormatYAxisTick(tick)</span>
                                         }
                                     </div>
-                                    <svg viewBox="0 0 @ChartWidth @ChartHeight" role="img" aria-label="Wykres słów na minutę">
+                                    <svg viewBox="0 0 @ChartWidth @ChartHeight" role="img" aria-label="Wykres wyników">
                                         <polyline points="@ChartPolyline"
                                                   fill="none"
                                                   stroke="#1b6ec2"
@@ -95,7 +129,7 @@
                                         @foreach (var point in chartPoints)
                                         {
                                             <circle cx="@point.X" cy="@point.Y" r="4" fill="#4caf50">
-                                                <title>@($"{point.Label}: {Math.Round(point.WordsPerMinute)} sł/min")</title>
+                                                <title>@point.Tooltip</title>
                                             </circle>
                                         }
                                     </svg>
@@ -104,7 +138,7 @@
                                     <span>@chartStartLabel</span>
                                     <span>@chartEndLabel</span>
                                 </div>
-                                <div class="axis-label axis-label-x">Oś X (pozioma): data rozgrywki</div>
+                                <div class="axis-label axis-label-x">@chartXAxisLabel</div>
                             </div>
                         </div>
                     </div>
@@ -124,16 +158,57 @@
 
     private UserProfile? currentUser;
     private IReadOnlyList<ReadingResult> readingResults = Array.Empty<ReadingResult>();
+    private IReadOnlyList<DurationResultItem> durationResults = Array.Empty<DurationResultItem>();
     private int currentPage = 1;
     private readonly List<ChartPoint> chartPoints = new();
     private string chartStartLabel = string.Empty;
     private string chartEndLabel = string.Empty;
-    private readonly List<int> chartYAxisTicks = new();
+    private readonly List<double> chartYAxisTicks = new();
+    private string resultsDescription = string.Empty;
+    private string chartTitle = string.Empty;
+    private string chartSubtitle = string.Empty;
+    private string chartYAxisLabel = string.Empty;
+    private string chartXAxisLabel = "Oś X (pozioma): data rozgrywki";
+    private ChartMetric chartMetric = ChartMetric.WordsPerMinute;
 
-    private int TotalPages => Math.Max(1, (int)Math.Ceiling(readingResults.Count / (double)PageSize));
+    private ResultsView selectedView = ResultsView.Reading;
 
-    private IEnumerable<ReadingResult> PaginatedResults =>
+    private ResultsView SelectedView
+    {
+        get => selectedView;
+        set
+        {
+            if (selectedView == value)
+            {
+                return;
+            }
+
+            selectedView = value;
+            LoadResults();
+        }
+    }
+
+    private readonly IReadOnlyList<ResultOption> resultOptions = new List<ResultOption>
+    {
+        new(ResultsView.Reading, "Czytanie", "Statystyki gry Czytanie."),
+        new(ResultsView.LiterkiArrange, "Literki - ustawianie", "Statystyki gry Literki (ustawianie)."),
+        new(ResultsView.LiterkiGuess, "Literki - zgadywanie", "Statystyki gry Literki (zgadywanie)."),
+        new(ResultsView.LiterkiFirstLetter, "Literki - pierwsza", "Statystyki gry Literki (pierwsza litera)."),
+        new(ResultsView.MathPlusMinus, "Matematyka - plus i minus", "Statystyki gry Matematyka (plus i minus)."),
+        new(ResultsView.MathArithmetic, "Matematyka - arytmetyka", "Statystyki gry Matematyka (arytmetyka).")
+    };
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(CurrentResultsCount / (double)PageSize));
+
+    private int CurrentResultsCount => SelectedView == ResultsView.Reading
+        ? readingResults.Count
+        : durationResults.Count;
+
+    private IEnumerable<ReadingResult> PaginatedReadingResults =>
         readingResults.Skip((currentPage - 1) * PageSize).Take(PageSize);
+
+    private IEnumerable<DurationResultItem> PaginatedDurationResults =>
+        durationResults.Skip((currentPage - 1) * PageSize).Take(PageSize);
 
     private string ChartPolyline =>
         string.Join(" ", chartPoints.Select(point =>
@@ -142,47 +217,120 @@
     protected override void OnParametersSet()
     {
         currentUser = UserState.Users.FirstOrDefault(user => user.Id == UserId);
-        readingResults = ResultsArchive.GetReadingResults(UserId);
+        LoadResults();
+    }
+
+    private void LoadResults()
+    {
+        readingResults = Array.Empty<ReadingResult>();
+        durationResults = Array.Empty<DurationResultItem>();
         currentPage = 1;
+
+        var option = resultOptions.FirstOrDefault(opt => opt.View == SelectedView) ?? resultOptions[0];
+        resultsDescription = option.Description;
+
+        if (currentUser is null)
+        {
+            BuildChart();
+            return;
+        }
+
+        switch (SelectedView)
+        {
+            case ResultsView.Reading:
+                readingResults = ResultsArchive.GetReadingResults(UserId);
+                chartMetric = ChartMetric.WordsPerMinute;
+                chartTitle = "Tempo czytania w czasie";
+                chartSubtitle = "Obserwuj, czy tempo czytania rośnie wraz z kolejnymi grami.";
+                chartYAxisLabel = "Oś Y (pionowa): słów na minutę";
+                break;
+            case ResultsView.LiterkiArrange:
+                LoadDurationResults(ResultsArchive.GetLiterkiResults(UserId, LiterkiGameMode.Arrange));
+                break;
+            case ResultsView.LiterkiGuess:
+                LoadDurationResults(ResultsArchive.GetLiterkiResults(UserId, LiterkiGameMode.Guess));
+                break;
+            case ResultsView.LiterkiFirstLetter:
+                LoadDurationResults(ResultsArchive.GetLiterkiResults(UserId, LiterkiGameMode.FirstLetter));
+                break;
+            case ResultsView.MathPlusMinus:
+                LoadDurationResults(ResultsArchive.GetMathResults(UserId, MathGameMode.PlusMinus));
+                break;
+            case ResultsView.MathArithmetic:
+                LoadDurationResults(ResultsArchive.GetMathResults(UserId, MathGameMode.Arithmetic));
+                break;
+        }
+
         BuildChart();
+    }
+
+    private void LoadDurationResults(IEnumerable<LiterkiResult> results)
+    {
+        durationResults = results
+            .Select(result => new DurationResultItem(result.PlayedAt, result.GameDurationSeconds))
+            .ToList();
+        ConfigureDurationChart();
+    }
+
+    private void LoadDurationResults(IEnumerable<MathResult> results)
+    {
+        durationResults = results
+            .Select(result => new DurationResultItem(result.PlayedAt, result.GameDurationSeconds))
+            .ToList();
+        ConfigureDurationChart();
+    }
+
+    private void ConfigureDurationChart()
+    {
+        chartMetric = ChartMetric.DurationSeconds;
+        chartTitle = "Czas rozwiązania w czasie";
+        chartSubtitle = "Zobacz, czy czas rozwiązania skraca się wraz z kolejnymi rozgrywkami.";
+        chartYAxisLabel = "Oś Y (pionowa): czas rozwiązania";
     }
 
     private void BuildChart()
     {
         chartPoints.Clear();
         chartYAxisTicks.Clear();
-        if (readingResults.Count == 0)
+        chartStartLabel = string.Empty;
+        chartEndLabel = string.Empty;
+
+        var entries = SelectedView == ResultsView.Reading
+            ? readingResults.Select(result => new ChartEntry(result.PlayedAt, result.WordsPerMinute,
+                $"{result.PlayedAt:dd.MM.yyyy}: {Math.Round(result.WordsPerMinute)} sł/min"))
+            : durationResults.Select(result => new ChartEntry(result.PlayedAt, result.DurationSeconds,
+                $"{result.PlayedAt:dd.MM.yyyy}: {FormatDuration(TimeSpan.FromSeconds(result.DurationSeconds))}"));
+
+        var orderedEntries = entries.OrderBy(entry => entry.PlayedAt).ToList();
+        if (orderedEntries.Count == 0)
         {
-            chartStartLabel = string.Empty;
-            chartEndLabel = string.Empty;
             return;
         }
 
-        var orderedResults = readingResults.OrderBy(result => result.PlayedAt).ToList();
-        var maxWpm = orderedResults.Max(result => result.WordsPerMinute);
-        if (maxWpm <= 0)
+        var maxValue = orderedEntries.Max(entry => entry.Value);
+        if (maxValue <= 0)
         {
-            maxWpm = 1;
+            maxValue = 1;
         }
 
-        var scaleStep = CalculateScaleStep(maxWpm);
-        var scaleMax = Math.Max(scaleStep, Math.Ceiling(maxWpm / scaleStep) * scaleStep);
+        var scaleStep = CalculateScaleStep(maxValue);
+        var scaleMax = Math.Max(scaleStep, Math.Ceiling(maxValue / scaleStep) * scaleStep);
         for (var value = scaleMax; value >= 0; value -= scaleStep)
         {
-            chartYAxisTicks.Add((int)value);
+            chartYAxisTicks.Add(value);
         }
 
-        var step = orderedResults.Count == 1 ? 0 : ChartWidth / (double)(orderedResults.Count - 1);
-        for (var index = 0; index < orderedResults.Count; index++)
+        var step = orderedEntries.Count == 1 ? 0 : ChartWidth / (double)(orderedEntries.Count - 1);
+        for (var index = 0; index < orderedEntries.Count; index++)
         {
-            var result = orderedResults[index];
-            var x = orderedResults.Count == 1 ? ChartWidth / 2.0 : index * step;
-            var y = ChartHeight - (result.WordsPerMinute / scaleMax * ChartHeight);
-            chartPoints.Add(new ChartPoint(x, y, result.WordsPerMinute, result.PlayedAt.ToString("dd.MM.yyyy")));
+            var entry = orderedEntries[index];
+            var x = orderedEntries.Count == 1 ? ChartWidth / 2.0 : index * step;
+            var y = ChartHeight - (entry.Value / scaleMax * ChartHeight);
+            chartPoints.Add(new ChartPoint(x, y, entry.Value, entry.PlayedAt.ToString("dd.MM.yyyy"), entry.Tooltip));
         }
 
-        chartStartLabel = orderedResults.First().PlayedAt.ToString("dd.MM.yyyy");
-        chartEndLabel = orderedResults.Last().PlayedAt.ToString("dd.MM.yyyy");
+        chartStartLabel = orderedEntries.First().PlayedAt.ToString("dd.MM.yyyy");
+        chartEndLabel = orderedEntries.Last().PlayedAt.ToString("dd.MM.yyyy");
     }
 
     private static int CalculateScaleStep(double maxValue)
@@ -209,6 +357,13 @@
         };
 
         return (int)Math.Max(1, niceNormalized * magnitude);
+    }
+
+    private string FormatYAxisTick(double value)
+    {
+        return chartMetric == ChartMetric.DurationSeconds
+            ? FormatDuration(TimeSpan.FromSeconds(value))
+            : value.ToString("0", CultureInfo.InvariantCulture);
     }
 
     private string FormatDuration(TimeSpan duration)
@@ -239,5 +394,27 @@
         Navigation.NavigateTo("/");
     }
 
-    private sealed record ChartPoint(double X, double Y, double WordsPerMinute, string Label);
+    private sealed record ChartPoint(double X, double Y, double Value, string Label, string Tooltip);
+
+    private sealed record ChartEntry(DateTime PlayedAt, double Value, string Tooltip);
+
+    private sealed record DurationResultItem(DateTime PlayedAt, int DurationSeconds);
+
+    private sealed record ResultOption(ResultsView View, string Label, string Description);
+
+    private enum ResultsView
+    {
+        Reading,
+        LiterkiArrange,
+        LiterkiGuess,
+        LiterkiFirstLetter,
+        MathPlusMinus,
+        MathArithmetic
+    }
+
+    private enum ChartMetric
+    {
+        WordsPerMinute,
+        DurationSeconds
+    }
 }
