@@ -1,0 +1,59 @@
+@using MudBlazor
+
+<MudCard Class="snake-card">
+    <MudCardContent>
+        <div class="snake-header">
+            <MudText Typo="Typo.h5">Wąż</MudText>
+            <div class="snake-stats">
+                <MudChip Color="Color.Success" Variant="Variant.Filled">Wynik: @_score</MudChip>
+                <MudChip Color="Color.Info" Variant="Variant.Outlined">Rekord: @_highScore</MudChip>
+                <MudChip Color="Color.Primary" Variant="Variant.Outlined">Prędkość: @_speedLabel</MudChip>
+            </div>
+        </div>
+
+        <div class="snake-controls">
+            <div class="snake-actions">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartGame">Start</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="PauseGame">Pauza</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Tertiary" OnClick="ResetGame">Restart</MudButton>
+                @if (_gameState == "gameover")
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" Class="snake-overlay-button" OnClick="ResetGame">
+                        Zagraj jeszcze raz
+                    </MudButton>
+                }
+            </div>
+            <div class="snake-switches">
+                <MudSwitch Checked="_kidMode" Color="Color.Primary" CheckedChanged="OnKidModeChanged">
+                    Tryb dziecka
+                </MudSwitch>
+                <MudSwitch Checked="_soundEnabled" Color="Color.Secondary" CheckedChanged="OnSoundChanged">
+                    Dźwięk
+                </MudSwitch>
+            </div>
+            <MudSelect T="string" Label="Poziom trudności" Dense="true" Value="_difficulty" ValueChanged="OnDifficultyChanged">
+                @foreach (var option in DifficultyOptions)
+                {
+                    <MudSelectItem Value="@option.Value">@option.Label</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        <div class="snake-canvas-wrapper" style="height:@HeightPx">
+            <canvas id="@_canvasId" class="snake-canvas"></canvas>
+        </div>
+
+        <div class="snake-dpad">
+            <span></span>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"up\"))">⬆️</MudButton>
+            <span></span>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"left\"))">⬅️</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"down\"))">⬇️</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection(\"right\"))">➡️</MudButton>
+            <span></span>
+            <span></span>
+        </div>
+
+        <MudText Class="snake-help">Sterowanie: strzałki / WASD lub przyciski dotykowe.</MudText>
+    </MudCardContent>
+</MudCard>
