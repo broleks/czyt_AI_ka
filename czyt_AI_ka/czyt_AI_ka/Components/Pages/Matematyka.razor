@@ -36,6 +36,13 @@
                             <p>Rozłóż mnożenie na dodawanie i podaj prawidłowy wynik.</p>
                         </div>
                     </button>
+                    <button class="math-game-tile" @onclick="() => SelectGame(MathGame.Counting)">
+                        <img class="math-game-image" src="images/games/math-plus-minus.svg" alt="Gra Liczenie" />
+                        <div class="math-game-content">
+                            <h3>Liczenie</h3>
+                            <p>Policz obiekty na obrazku i wpisz prawidłową liczbę.</p>
+                        </div>
+                    </button>
                 </div>
             </div>
         }
@@ -45,7 +52,7 @@
                 <h2>@SelectedGameTitle</h2>
                 <p>@SelectedGameDescription</p>
 
-                @if (selectedGame != MathGame.Multiplication)
+                @if (selectedGame is MathGame.PlusMinus or MathGame.Arithmetic)
                 {
                     <div class="math-range-options">
                         @foreach (var option in rangeOptions)
@@ -76,7 +83,7 @@
                     <span>✅ @CorrectCount / @TotalTasks</span>
                 </div>
 
-                <div class="math-task-board @(selectedGame is MathGame.Multiplication or MathGame.Arithmetic ? "math-task-board-single" : string.Empty)">
+                <div class="math-task-board @(selectedGame is MathGame.Multiplication or MathGame.Arithmetic or MathGame.Counting ? "math-task-board-single" : string.Empty) @(selectedGame == MathGame.Counting ? "math-task-board-counting" : string.Empty)">
                     @if (selectedGame == MathGame.PlusMinus)
                     {
                         <div class="math-column">
@@ -155,6 +162,38 @@
                             }
                         </div>
                     }
+                    else if (selectedGame == MathGame.Counting)
+                    {
+                        <div class="math-column math-column-counting">
+                            <h3>Liczenie</h3>
+                            <div class="math-counting-grid">
+                                @foreach (var task in countingTasks)
+                                {
+                                    <div class="math-counting-task">
+                                        <div class="math-counting-shapes">
+                                            @if (task.Count == 0)
+                                            {
+                                                <span class="math-counting-empty">Brak obiektów</span>
+                                            }
+                                            else
+                                            {
+                                                @for (var i = 0; i < task.Count; i++)
+                                                {
+                                                    <span class="math-counting-shape @task.Shape.CssClass" title="@task.Shape.Label"></span>
+                                                }
+                                            }
+                                        </div>
+                                        <input class="math-input @GetInputClass(task)"
+                                               type="number"
+                                               inputmode="numeric"
+                                               value="@task.Input"
+                                               @oninput="(e) => OnAnswerInput(task, e)"
+                                               disabled="@isGameCompleted" />
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -195,7 +234,8 @@
     {
         PlusMinus,
         Arithmetic,
-        Multiplication
+        Multiplication,
+        Counting
     }
 
     private enum MathScreen
@@ -356,6 +396,37 @@
         }
     }
 
+    private sealed record CountingShape(string Label, string CssClass);
+
+    private sealed class CountingTask : IAnswerTask
+    {
+        public int Count { get; init; }
+        public CountingShape Shape { get; init; } = new("Kółka", "math-shape-circle");
+        public string Input { get; set; } = string.Empty;
+
+        public bool IsCorrect
+        {
+            get
+            {
+                if (int.TryParse(Input, out var value))
+                {
+                    return value == Count;
+                }
+
+                return false;
+            }
+        }
+    }
+
+    private readonly IReadOnlyList<CountingShape> countingShapes = new List<CountingShape>
+    {
+        new("Kółka", "math-shape-circle"),
+        new("Kwadraty", "math-shape-square"),
+        new("Trójkąty", "math-shape-triangle"),
+        new("Romby", "math-shape-diamond"),
+        new("Linie", "math-shape-line")
+    };
+
     private readonly List<RangeOption> rangeOptions = new()
     {
         new RangeOption("1-10", 10),
@@ -370,10 +441,13 @@
     private const int MinRange = 1;
     private const int MultiplicationMin = 1;
     private const int MultiplicationMax = 9;
+    private const int CountingMin = 0;
+    private const int CountingMax = 10;
     private List<MathTask> additionTasks = new();
     private List<MathTask> subtractionTasks = new();
     private List<ArithmeticTask> arithmeticTasks = new();
     private List<MultiplicationTask> multiplicationTasks = new();
+    private List<CountingTask> countingTasks = new();
 
     private DateTime? gameStartTime;
     private TimeSpan elapsedTime = TimeSpan.Zero;
@@ -389,6 +463,7 @@
         MathGame.PlusMinus => additionTasks.Concat(subtractionTasks),
         MathGame.Arithmetic => arithmeticTasks,
         MathGame.Multiplication => multiplicationTasks,
+        MathGame.Counting => countingTasks,
         _ => Enumerable.Empty<IAnswerTask>()
     };
 
@@ -396,6 +471,7 @@
     {
         MathGame.Arithmetic => "Arytmetyka",
         MathGame.Multiplication => "Mnożenie",
+        MathGame.Counting => "Liczenie",
         _ => "Plus i Minus"
     };
 
@@ -403,6 +479,7 @@
     {
         MathGame.Arithmetic => "Rozwiązuj wyrażenia z 6 liczbami, aby odnaleźć prawidłowy wynik.",
         MathGame.Multiplication => "Rozłóż mnożenie na dodawanie i podaj prawidłowy wynik (liczby 1-9).",
+        MathGame.Counting => "Policz figury na ilustracji i wpisz prawidłową liczbę obiektów.",
         _ => "Wybierz zakres liczb, aby rozpocząć rozwiązywanie zadań."
     };
 
@@ -443,6 +520,7 @@
         subtractionTasks = new List<MathTask>();
         arithmeticTasks = new List<ArithmeticTask>();
         multiplicationTasks = new List<MultiplicationTask>();
+        countingTasks = new List<CountingTask>();
         elapsedTime = TimeSpan.Zero;
         isGameCompleted = false;
         gameStartTime = null;
@@ -457,6 +535,7 @@
         subtractionTasks = new List<MathTask>();
         arithmeticTasks = new List<ArithmeticTask>();
         multiplicationTasks = new List<MultiplicationTask>();
+        countingTasks = new List<CountingTask>();
 
         if (selectedGame == MathGame.PlusMinus)
         {
@@ -478,6 +557,12 @@
         {
             multiplicationTasks = Enumerable.Range(0, 5)
                 .Select(_ => CreateMultiplicationTask(random))
+                .ToList();
+        }
+        else if (selectedGame == MathGame.Counting)
+        {
+            countingTasks = Enumerable.Range(0, 5)
+                .Select(_ => CreateCountingTask(random))
                 .ToList();
         }
     }
@@ -550,6 +635,18 @@
         {
             Left = left,
             Right = right
+        };
+    }
+
+    private CountingTask CreateCountingTask(Random random)
+    {
+        var count = random.Next(CountingMin, CountingMax + 1);
+        var shape = countingShapes[random.Next(countingShapes.Count)];
+
+        return new CountingTask
+        {
+            Count = count,
+            Shape = shape
         };
     }
 
@@ -683,6 +780,7 @@
             {
                 MathGame.Arithmetic => MathGameMode.Arithmetic,
                 MathGame.Multiplication => MathGameMode.Multiplication,
+                MathGame.Counting => MathGameMode.Counting,
                 _ => MathGameMode.PlusMinus
             }
         };

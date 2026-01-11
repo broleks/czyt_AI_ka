@@ -6,7 +6,8 @@ namespace czyt_AI_ka.Components.Backend.Models
     {
         PlusMinus,
         Arithmetic,
-        Multiplication
+        Multiplication,
+        Counting
     }
 
     public sealed class MathResult
