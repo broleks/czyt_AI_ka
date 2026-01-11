@@ -29,6 +29,13 @@
                             <p>Rozwiązuj krótkie wyrażenia z dodawaniem i odejmowaniem.</p>
                         </div>
                     </button>
+                    <button class="math-game-tile" @onclick="() => SelectGame(MathGame.Multiplication)">
+                        <img class="math-game-image" src="images/games/math-plus-minus.svg" alt="Gra Mnożenie" />
+                        <div class="math-game-content">
+                            <h3>Mnożenie</h3>
+                            <p>Rozłóż mnożenie na dodawanie i podaj prawidłowy wynik.</p>
+                        </div>
+                    </button>
                 </div>
             </div>
         }
@@ -38,19 +45,22 @@
                 <h2>@SelectedGameTitle</h2>
                 <p>@SelectedGameDescription</p>
 
-                <div class="math-range-options">
-                    @foreach (var option in rangeOptions)
-                    {
-                        <label class="math-range-option">
-                            <input type="radio"
-                                   name="mathRange"
-                                   value="@option.Max"
-                                   checked="@(selectedMax == option.Max)"
-                                   @onchange="() => selectedMax = option.Max" />
-                            <span>@option.Label</span>
-                        </label>
-                    }
-                </div>
+                @if (selectedGame != MathGame.Multiplication)
+                {
+                    <div class="math-range-options">
+                        @foreach (var option in rangeOptions)
+                        {
+                            <label class="math-range-option">
+                                <input type="radio"
+                                       name="mathRange"
+                                       value="@option.Max"
+                                       checked="@(selectedMax == option.Max)"
+                                       @onchange="() => selectedMax = option.Max" />
+                                <span>@option.Label</span>
+                            </label>
+                        }
+                    </div>
+                }
 
                 <div class="math-setup-actions">
                     <button class="btn btn-primary btn-lg" @onclick="StartGame">Zaczynamy</button>
@@ -66,7 +76,7 @@
                     <span>✅ @CorrectCount / @TotalTasks</span>
                 </div>
 
-                <div class="math-task-board">
+                <div class="math-task-board @(selectedGame == MathGame.Multiplication ? "math-task-board-single" : string.Empty)">
                     @if (selectedGame == MathGame.PlusMinus)
                     {
                         <div class="math-column">
@@ -119,6 +129,32 @@
                             }
                         </div>
                     }
+                    else if (selectedGame == MathGame.Multiplication)
+                    {
+                        <div class="math-column">
+                            <h3>Mnożenie</h3>
+                            @foreach (var task in multiplicationTasks)
+                            {
+                                <div class="math-task math-task-multiplication">
+                                    <div class="math-equation">@task.Left × @task.Right =</div>
+                                    <input class="math-input math-input-wide @GetAdditionInputClass(task)"
+                                           type="text"
+                                           inputmode="text"
+                                           value="@task.AdditionInput"
+                                           placeholder="np. 3+3+3"
+                                           @oninput="(e) => OnAdditionInput(task, e)"
+                                           disabled="@isGameCompleted" />
+                                    <span class="math-equals">=</span>
+                                    <input class="math-input @GetResultInputClass(task)"
+                                           type="number"
+                                           inputmode="numeric"
+                                           value="@task.Input"
+                                           @oninput="(e) => OnResultInput(task, e)"
+                                           disabled="@isGameCompleted" />
+                                </div>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -158,7 +194,8 @@
     private enum MathGame
     {
         PlusMinus,
-        Arithmetic
+        Arithmetic,
+        Multiplication
     }
 
     private enum MathScreen
@@ -256,6 +293,69 @@
         }
     }
 
+    private sealed class MultiplicationTask : IAnswerTask
+    {
+        public int Left { get; init; }
+        public int Right { get; init; }
+        public string AdditionInput { get; set; } = string.Empty;
+        public string Input { get; set; } = string.Empty;
+
+        public int Answer => Left * Right;
+
+        public bool IsAdditionCorrect => IsAdditionExpressionValid(AdditionInput);
+
+        public bool IsCorrect => IsAdditionCorrect && IsResultCorrect;
+
+        public bool IsResultCorrect
+        {
+            get
+            {
+                if (int.TryParse(Input, out var value))
+                {
+                    return value == Answer;
+                }
+
+                return false;
+            }
+        }
+
+        private bool IsAdditionExpressionValid(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return false;
+            }
+
+            var parts = input.Split('+', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+            {
+                return false;
+            }
+
+            var values = new List<int>(parts.Length);
+            foreach (var part in parts)
+            {
+                if (!int.TryParse(part.Trim(), out var value))
+                {
+                    return false;
+                }
+
+                values.Add(value);
+            }
+
+            var count = values.Count;
+            var matchesLeft = count == Left && values.All(value => value == Right);
+            var matchesRight = count == Right && values.All(value => value == Left);
+
+            if (Left == 0 && Right == 0)
+            {
+                return values.All(value => value == 0);
+            }
+
+            return matchesLeft || matchesRight;
+        }
+    }
+
     private readonly List<RangeOption> rangeOptions = new()
     {
         new RangeOption("1-10", 10),
@@ -267,10 +367,13 @@
     private MathScreen currentScreen = MathScreen.Setup;
     private int selectedMax = 10;
 
-    private readonly int minRange = 1;
+    private const int MinRange = 1;
+    private const int MultiplicationMin = 0;
+    private const int MultiplicationMax = 9;
     private List<MathTask> additionTasks = new();
     private List<MathTask> subtractionTasks = new();
     private List<ArithmeticTask> arithmeticTasks = new();
+    private List<MultiplicationTask> multiplicationTasks = new();
 
     private DateTime? gameStartTime;
     private TimeSpan elapsedTime = TimeSpan.Zero;
@@ -285,18 +388,21 @@
     {
         MathGame.PlusMinus => additionTasks.Concat(subtractionTasks),
         MathGame.Arithmetic => arithmeticTasks,
+        MathGame.Multiplication => multiplicationTasks,
         _ => Enumerable.Empty<IAnswerTask>()
     };
 
     private string SelectedGameTitle => selectedGame switch
     {
         MathGame.Arithmetic => "Arytmetyka",
+        MathGame.Multiplication => "Mnożenie",
         _ => "Plus i Minus"
     };
 
     private string SelectedGameDescription => selectedGame switch
     {
         MathGame.Arithmetic => "Rozwiązuj wyrażenia z 6 liczbami, aby odnaleźć prawidłowy wynik.",
+        MathGame.Multiplication => "Rozłóż mnożenie na dodawanie i podaj prawidłowy wynik (liczby 0-9).",
         _ => "Wybierz zakres liczb, aby rozpocząć rozwiązywanie zadań."
     };
 
@@ -336,6 +442,7 @@
         additionTasks = new List<MathTask>();
         subtractionTasks = new List<MathTask>();
         arithmeticTasks = new List<ArithmeticTask>();
+        multiplicationTasks = new List<MultiplicationTask>();
         elapsedTime = TimeSpan.Zero;
         isGameCompleted = false;
         gameStartTime = null;
@@ -349,6 +456,7 @@
         additionTasks = new List<MathTask>();
         subtractionTasks = new List<MathTask>();
         arithmeticTasks = new List<ArithmeticTask>();
+        multiplicationTasks = new List<MultiplicationTask>();
 
         if (selectedGame == MathGame.PlusMinus)
         {
@@ -366,12 +474,18 @@
                 .Select(_ => CreateArithmeticTask(random))
                 .ToList();
         }
+        else if (selectedGame == MathGame.Multiplication)
+        {
+            multiplicationTasks = Enumerable.Range(0, 5)
+                .Select(_ => CreateMultiplicationTask(random))
+                .ToList();
+        }
     }
 
     private MathTask CreateAdditionTask(Random random)
     {
-        var left = random.Next(minRange, selectedMax + 1);
-        var right = random.Next(minRange, selectedMax + 1);
+        var left = random.Next(MinRange, selectedMax + 1);
+        var right = random.Next(MinRange, selectedMax + 1);
 
         return new MathTask
         {
@@ -383,8 +497,8 @@
 
     private MathTask CreateSubtractionTask(Random random)
     {
-        var left = random.Next(minRange, selectedMax + 1);
-        var right = random.Next(minRange, selectedMax + 1);
+        var left = random.Next(MinRange, selectedMax + 1);
+        var right = random.Next(MinRange, selectedMax + 1);
 
         if (right > left)
         {
@@ -403,7 +517,7 @@
     {
         var terms = new List<int>(6)
         {
-            random.Next(minRange, selectedMax + 1)
+            random.Next(MinRange, selectedMax + 1)
         };
 
         var operators = new List<char>(5);
@@ -411,7 +525,7 @@
 
         for (var i = 1; i < 6; i++)
         {
-            var next = random.Next(minRange, selectedMax + 1);
+            var next = random.Next(MinRange, selectedMax + 1);
             var op = random.Next(0, 2) == 0 ? '+' : '-';
 
             if (op == '-' && current - next < 0)
@@ -427,6 +541,18 @@
         return new ArithmeticTask(terms, operators);
     }
 
+    private MultiplicationTask CreateMultiplicationTask(Random random)
+    {
+        var left = random.Next(MultiplicationMin, MultiplicationMax + 1);
+        var right = random.Next(MultiplicationMin, MultiplicationMax + 1);
+
+        return new MultiplicationTask
+        {
+            Left = left,
+            Right = right
+        };
+    }
+
     private async Task OnAnswerInput(IAnswerTask task, ChangeEventArgs args)
     {
         if (isGameCompleted)
@@ -436,6 +562,63 @@
 
         task.Input = args.Value?.ToString()?.Trim() ?? string.Empty;
 
+        await EvaluateCompletionAsync();
+    }
+
+    private async Task OnAdditionInput(MultiplicationTask task, ChangeEventArgs args)
+    {
+        if (isGameCompleted)
+        {
+            return;
+        }
+
+        task.AdditionInput = args.Value?.ToString()?.Trim() ?? string.Empty;
+        await EvaluateCompletionAsync();
+    }
+
+    private async Task OnResultInput(MultiplicationTask task, ChangeEventArgs args)
+    {
+        if (isGameCompleted)
+        {
+            return;
+        }
+
+        task.Input = args.Value?.ToString()?.Trim() ?? string.Empty;
+        await EvaluateCompletionAsync();
+    }
+
+    private string GetInputClass(IAnswerTask task)
+    {
+        if (string.IsNullOrWhiteSpace(task.Input))
+        {
+            return string.Empty;
+        }
+
+        return task.IsCorrect ? "correct" : "incorrect";
+    }
+
+    private string GetAdditionInputClass(MultiplicationTask task)
+    {
+        if (string.IsNullOrWhiteSpace(task.AdditionInput))
+        {
+            return string.Empty;
+        }
+
+        return task.IsAdditionCorrect ? "correct" : "incorrect";
+    }
+
+    private string GetResultInputClass(MultiplicationTask task)
+    {
+        if (string.IsNullOrWhiteSpace(task.Input))
+        {
+            return string.Empty;
+        }
+
+        return task.IsResultCorrect ? "correct" : "incorrect";
+    }
+
+    private async Task EvaluateCompletionAsync()
+    {
         if (TotalTasks > 0 && CurrentTasks.All(t => t.IsCorrect))
         {
             isGameCompleted = true;
@@ -453,16 +636,6 @@
         {
             await InvokeAsync(StateHasChanged);
         }
-    }
-
-    private string GetInputClass(IAnswerTask task)
-    {
-        if (string.IsNullOrWhiteSpace(task.Input))
-        {
-            return string.Empty;
-        }
-
-        return task.IsCorrect ? "correct" : "incorrect";
     }
 
     private void StartTimer()
@@ -506,7 +679,12 @@
             PlayerName = UserState.SelectedUser.Name,
             PlayedAt = DateTime.Now,
             GameDurationSeconds = (int)Math.Round(elapsedTime.TotalSeconds),
-            Mode = selectedGame == MathGame.Arithmetic ? MathGameMode.Arithmetic : MathGameMode.PlusMinus
+            Mode = selectedGame switch
+            {
+                MathGame.Arithmetic => MathGameMode.Arithmetic,
+                MathGame.Multiplication => MathGameMode.Multiplication,
+                _ => MathGameMode.PlusMinus
+            }
         };
 
         ResultsArchive.AddMathResult(result);

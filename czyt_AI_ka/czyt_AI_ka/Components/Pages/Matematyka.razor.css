@@ -118,6 +118,10 @@
     gap: 1.5rem;
 }
 
+.math-task-board-single {
+    grid-template-columns: 1fr;
+}
+
 .math-column {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 18px;
@@ -143,6 +147,12 @@
     font-weight: 600;
 }
 
+.math-task-multiplication {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
 .math-equation {
     white-space: nowrap;
 }
@@ -158,6 +168,15 @@
     color: #2f3e66;
     background: #fff;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.math-input-wide {
+    width: 160px;
+}
+
+.math-equals {
+    font-weight: 700;
+    color: #2f3e66;
 }
 
 .math-input:disabled {
