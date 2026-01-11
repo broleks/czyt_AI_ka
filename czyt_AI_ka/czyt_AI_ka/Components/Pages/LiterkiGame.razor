@@ -1,5 +1,9 @@
 ﻿@page "/literki"
 @using System.Timers
+@using czyt_AI_ka.Components.Backend
+@using czyt_AI_ka.Components.Backend.Models
+@inject UserState UserState
+@inject ResultsArchive ResultsArchive
 @implements IDisposable
 
 <div class="app-screen app-screen-literaki">
@@ -236,6 +240,7 @@
     private List<char> firstLetterOptions = new();
     private int? firstLetterCorrectIndex;
     private HashSet<int> firstLetterWrongIndexes = new();
+    private bool hasSavedResult;
 
     private async Task StartDraw()
     {
@@ -269,6 +274,7 @@
         }
 
         currentMode = mode;
+        hasSavedResult = false;
         currentScreen = GameScreen.Play;
         if (currentMode == GameMode.Arrange)
         {
@@ -499,6 +505,7 @@
         gameTimer?.Stop();
         gameTimer?.Dispose();
         isCompleted = true;
+        SaveResultIfNeeded();
         await InvokeAsync(StateHasChanged);
         await Task.Delay(2000);
         currentScreen = GameScreen.Summary;
@@ -523,6 +530,7 @@
         firstLetterOptions = new List<char>();
         firstLetterCorrectIndex = null;
         firstLetterWrongIndexes = new HashSet<int>();
+        hasSavedResult = false;
     }
 
     private string GetImagePath(WordEntry entry) => $"images/literaki/{entry.Word}.png";
@@ -545,6 +553,33 @@
 
         return firstLetterWrongIndexes.Contains(index) ? "incorrect" : string.Empty;
     }
+
+    private void SaveResultIfNeeded()
+    {
+        if (hasSavedResult || UserState.SelectedUser is null)
+        {
+            return;
+        }
+
+        var result = new LiterkiResult
+        {
+            UserId = UserState.SelectedUser.Id,
+            PlayerName = UserState.SelectedUser.Name,
+            PlayedAt = DateTime.Now,
+            GameDurationSeconds = (int)Math.Round(elapsedTime.TotalSeconds),
+            Mode = MapMode(currentMode)
+        };
+
+        ResultsArchive.AddLiterkiResult(result);
+        hasSavedResult = true;
+    }
+
+    private static LiterkiGameMode MapMode(GameMode mode) => mode switch
+    {
+        GameMode.Guess => LiterkiGameMode.Guess,
+        GameMode.FirstLetter => LiterkiGameMode.FirstLetter,
+        _ => LiterkiGameMode.Arrange
+    };
 
     private sealed record WordEntry(string Word);
 
