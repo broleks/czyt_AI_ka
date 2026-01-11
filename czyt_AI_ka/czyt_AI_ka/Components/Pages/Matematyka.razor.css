@@ -229,6 +229,13 @@
     background: #111827;
 }
 
+.math-shape-rectangle {
+    width: 32px;
+    height: 18px;
+    border-radius: 6px;
+    background: #10b981;
+}
+
 .math-equation {
     white-space: nowrap;
 }
