@@ -6,6 +6,7 @@
 @using System.Text.Json
 @inject IJSRuntime JS
 @inject UserState UserState
+@inject ResultsArchive ResultsArchive
 @inject czyt_AI_ka.Components.Backend.Clients.ChatGptClient ChatGptClient
 
 <div class="app-screen app-screen-czytanie">
@@ -266,6 +267,7 @@
     private StoryGenerationResponse resultAsObject = new StoryGenerationResponse();
     private bool isSummaryScreenHidden = true;
     private double wordsPerMinute;
+    private bool hasSavedResult;
 
     private int desiredWordCount = 100;
     private string desireStoryTopic = "";
@@ -305,6 +307,21 @@
         else
         {
             wordsPerMinute = WordCount / minutes;
+        }
+
+        if (!hasSavedResult && UserState.SelectedUser is not null)
+        {
+            var result = new ReadingResult
+            {
+                UserId = UserState.SelectedUser.Id,
+                PlayerName = UserState.SelectedUser.Name,
+                PlayedAt = DateTime.Now,
+                WordCount = WordCount,
+                WordsPerMinute = wordsPerMinute,
+                GameDurationSeconds = (int)Math.Round(readingTimeElapsed.TotalSeconds)
+            };
+            ResultsArchive.AddReadingResult(result);
+            hasSavedResult = true;
         }
 
         // chowamy ekran z czytanką i pokazujemy podsumowanie
@@ -574,6 +591,7 @@
         isSummaryScreenHidden = true;
         isStartingReadingButtonHidden = true;
         showQuestions = false;
+        hasSavedResult = false;
 
         // czytanie
         readingStartTime = null;

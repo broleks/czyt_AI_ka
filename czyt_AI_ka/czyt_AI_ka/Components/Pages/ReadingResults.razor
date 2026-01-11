@@ -1,0 +1,194 @@
+@page "/reading-results/{UserId:guid}"
+@using System.Globalization
+@using czyt_AI_ka.Components.Backend
+@using czyt_AI_ka.Components.Backend.Models
+@inject UserState UserState
+@inject ResultsArchive ResultsArchive
+@inject NavigationManager Navigation
+
+<div class="app-screen app-screen-results">
+    <div class="app-card results-card">
+        <div class="results-header">
+            <div>
+                <h2>Wyniki @(currentUser is null ? string.Empty : $"({currentUser.Name})")</h2>
+                <p>Statystyki gry Czytanie.</p>
+            </div>
+            <button class="btn btn-secondary" @onclick="Close">Zamknij</button>
+        </div>
+
+        @if (currentUser is null)
+        {
+            <div class="alert alert-warning">
+                Nie znaleziono wybranego użytkownika. Wróć do strony głównej i wybierz profil ponownie.
+            </div>
+        }
+        else if (readingResults.Count == 0)
+        {
+            <div class="empty-state">
+                Brak zapisanych wyników dla tego gracza.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive results-table">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">Ilość słów</th>
+                            <th scope="col">Czas gry</th>
+                            <th scope="col">Słów / minutę</th>
+                            <th scope="col">Data rozegranej gry</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in PaginatedResults)
+                        {
+                            <tr>
+                                <td>@result.WordCount</td>
+                                <td>@FormatDuration(result.GameDuration)</td>
+                                <td>@Math.Round(result.WordsPerMinute)</td>
+                                <td>@result.PlayedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="results-pagination">
+                <button class="btn btn-outline-secondary" @onclick="PreviousPage" disabled="@(currentPage <= 1)">
+                    Poprzednia
+                </button>
+                <span>Strona @currentPage z @TotalPages</span>
+                <button class="btn btn-outline-secondary" @onclick="NextPage" disabled="@(currentPage >= TotalPages)">
+                    Następna
+                </button>
+            </div>
+
+            <div class="results-chart">
+                <h3>Tempo czytania w czasie</h3>
+                <p class="chart-subtitle">Obserwuj, czy tempo czytania rośnie wraz z kolejnymi grami.</p>
+
+                @if (chartPoints.Count == 0)
+                {
+                    <div class="empty-state">
+                        Brak danych do wykresu.
+                    </div>
+                }
+                else
+                {
+                    <div class="chart-wrapper">
+                        <svg viewBox="0 0 @ChartWidth @ChartHeight" role="img" aria-label="Wykres słów na minutę">
+                            <polyline points="@ChartPolyline"
+                                      fill="none"
+                                      stroke="#1b6ec2"
+                                      stroke-width="3" />
+                            @foreach (var point in chartPoints)
+                            {
+                                <circle cx="@point.X" cy="@point.Y" r="4" fill="#4caf50">
+                                    <title>@($"{point.Label}: {Math.Round(point.WordsPerMinute)} sł/min")</title>
+                                </circle>
+                            }
+                        </svg>
+                        <div class="chart-axis">
+                            <span>@chartStartLabel</span>
+                            <span>@chartEndLabel</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private const int PageSize = 20;
+    private const int ChartWidth = 600;
+    private const int ChartHeight = 200;
+
+    private UserProfile? currentUser;
+    private IReadOnlyList<ReadingResult> readingResults = Array.Empty<ReadingResult>();
+    private int currentPage = 1;
+    private readonly List<ChartPoint> chartPoints = new();
+    private string chartStartLabel = string.Empty;
+    private string chartEndLabel = string.Empty;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(readingResults.Count / (double)PageSize));
+
+    private IEnumerable<ReadingResult> PaginatedResults =>
+        readingResults.Skip((currentPage - 1) * PageSize).Take(PageSize);
+
+    private string ChartPolyline =>
+        string.Join(" ", chartPoints.Select(point =>
+            string.Format(CultureInfo.InvariantCulture, "{0:0},{1:0}", point.X, point.Y)));
+
+    protected override void OnParametersSet()
+    {
+        currentUser = UserState.Users.FirstOrDefault(user => user.Id == UserId);
+        readingResults = ResultsArchive.GetReadingResults(UserId);
+        currentPage = 1;
+        BuildChart();
+    }
+
+    private void BuildChart()
+    {
+        chartPoints.Clear();
+        if (readingResults.Count == 0)
+        {
+            chartStartLabel = string.Empty;
+            chartEndLabel = string.Empty;
+            return;
+        }
+
+        var orderedResults = readingResults.OrderBy(result => result.PlayedAt).ToList();
+        var maxWpm = orderedResults.Max(result => result.WordsPerMinute);
+        if (maxWpm <= 0)
+        {
+            maxWpm = 1;
+        }
+
+        var step = orderedResults.Count == 1 ? 0 : ChartWidth / (double)(orderedResults.Count - 1);
+        for (var index = 0; index < orderedResults.Count; index++)
+        {
+            var result = orderedResults[index];
+            var x = orderedResults.Count == 1 ? ChartWidth / 2.0 : index * step;
+            var y = ChartHeight - (result.WordsPerMinute / maxWpm * ChartHeight);
+            chartPoints.Add(new ChartPoint(x, y, result.WordsPerMinute, result.PlayedAt.ToString("dd.MM.yyyy")));
+        }
+
+        chartStartLabel = orderedResults.First().PlayedAt.ToString("dd.MM.yyyy");
+        chartEndLabel = orderedResults.Last().PlayedAt.ToString("dd.MM.yyyy");
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        return duration.TotalHours >= 1
+            ? duration.ToString(@"hh\:mm\:ss")
+            : duration.ToString(@"mm\:ss");
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+        }
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < TotalPages)
+        {
+            currentPage++;
+        }
+    }
+
+    private void Close()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private sealed record ChartPoint(double X, double Y, double WordsPerMinute, string Label);
+}

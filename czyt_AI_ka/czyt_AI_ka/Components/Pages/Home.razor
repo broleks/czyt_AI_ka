@@ -5,6 +5,7 @@
 @using czyt_AI_ka.Components.Backend
 @using czyt_AI_ka.Components.Backend.Models
 @inject UserState UserState
+@inject NavigationManager Navigation
 
 <div class="home-layout">
     <section class="home-panel">
@@ -36,6 +37,9 @@
                         <div class="user-actions">
                             <button class="btn btn-primary user-edit" type="button" @onclick="() => StartEditing(user)">
                                 Edytuj
+                            </button>
+                            <button class="btn btn-outline-primary user-results" type="button" @onclick="() => GoToResults(user)">
+                                Wyniki
                             </button>
                             <button class="btn btn-danger user-delete" type="button" @onclick="() => RemoveUser(user)">
                                 Usuń
@@ -197,6 +201,11 @@
     private void ClearSelection()
     {
         UserState.ClearSelection();
+    }
+
+    private void GoToResults(UserProfile user)
+    {
+        Navigation.NavigateTo($"/reading-results/{user.Id}");
     }
 
     private async Task OnCustomImageSelected(InputFileChangeEventArgs args)

@@ -26,6 +26,7 @@ namespace czyt_AI_ka
 
             builder.Services.AddSingleton<ChatGptClient>();
             builder.Services.AddSingleton<UserState>();
+            builder.Services.AddSingleton<ResultsArchive>();
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();
