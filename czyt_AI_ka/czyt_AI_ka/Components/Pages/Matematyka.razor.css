@@ -1,5 +1,8 @@
 .app-screen-matematyka {
-    background: linear-gradient(135deg, rgba(255, 247, 232, 0.95), rgba(230, 245, 255, 0.95));
+    background-image: url("images/backgrounds/matematyka.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .math-card {
