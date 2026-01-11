@@ -420,11 +420,12 @@
 
     private readonly IReadOnlyList<CountingShape> countingShapes = new List<CountingShape>
     {
-        new("Kółka", "math-shape-circle"),
         new("Kwadraty", "math-shape-square"),
         new("Trójkąty", "math-shape-triangle"),
         new("Romby", "math-shape-diamond"),
-        new("Linie", "math-shape-line")
+        new("Linie", "math-shape-line"),
+        new("Prostokąty", "math-shape-rectangle"),
+        new("Kółka", "math-shape-circle")
     };
 
     private readonly List<RangeOption> rangeOptions = new()
@@ -561,8 +562,10 @@
         }
         else if (selectedGame == MathGame.Counting)
         {
-            countingTasks = Enumerable.Range(0, 5)
-                .Select(_ => CreateCountingTask(random))
+            var counts = GenerateUniqueCountingValues(random, 6);
+
+            countingTasks = counts
+                .Select(count => CreateCountingTask(random, count))
                 .ToList();
         }
     }
@@ -638,9 +641,8 @@
         };
     }
 
-    private CountingTask CreateCountingTask(Random random)
+    private CountingTask CreateCountingTask(Random random, int count)
     {
-        var count = random.Next(CountingMin, CountingMax + 1);
         var shape = countingShapes[random.Next(countingShapes.Count)];
 
         return new CountingTask
@@ -648,6 +650,14 @@
             Count = count,
             Shape = shape
         };
+    }
+
+    private static List<int> GenerateUniqueCountingValues(Random random, int taskCount)
+    {
+        return Enumerable.Range(CountingMin, CountingMax - CountingMin + 1)
+            .OrderBy(_ => random.Next())
+            .Take(taskCount)
+            .ToList();
     }
 
     private async Task OnAnswerInput(IAnswerTask task, ChangeEventArgs args)
