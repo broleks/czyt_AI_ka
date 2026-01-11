@@ -5,7 +5,8 @@ namespace czyt_AI_ka.Components.Backend.Models
     public enum MathGameMode
     {
         PlusMinus,
-        Arithmetic
+        Arithmetic,
+        Multiplication
     }
 
     public sealed class MathResult
