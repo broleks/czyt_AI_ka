@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <title>Wąż</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(circle at top, #f0f7ff 0, #dfeeff 55%, #cfe4ff 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #0f172a;
+        }
+
+        #game-wrapper {
+            width: min(980px, 94vw);
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 22px;
+            box-shadow: 0 20px 42px rgba(15, 23, 42, 0.15);
+            padding: 18px 22px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        #title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        #stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        #stats span.value {
+            font-weight: 800;
+        }
+
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            align-items: center;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #2563eb;
+            color: #fff;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        button.secondary {
+            background: #7c3aed;
+        }
+
+        button.ghost {
+            background: #e2e8f0;
+            color: #1f2937;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.2);
+        }
+
+        label {
+            font-size: 13px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        select {
+            border-radius: 999px;
+            border: 1px solid #cbd5f5;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        #canvas-wrapper {
+            width: 100%;
+            height: min(520px, 58vh);
+            background: #f8fbff;
+            border-radius: 18px;
+            padding: 8px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 14px;
+        }
+
+        #dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 52px);
+            grid-template-rows: repeat(3, 52px);
+            gap: 8px;
+            justify-content: center;
+        }
+
+        #dpad button {
+            width: 52px;
+            height: 52px;
+            padding: 0;
+            font-size: 18px;
+            border-radius: 14px;
+        }
+
+        #status {
+            font-size: 13px;
+            color: #334155;
+            min-height: 1em;
+        }
+
+        #help {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        @media (max-width: 640px) {
+            #controls {
+                grid-template-columns: 1fr;
+            }
+
+            #canvas-wrapper {
+                height: min(440px, 52vh);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <div id="title">Wąż</div>
+        <div id="stats">
+            <div>Wynik: <span id="score" class="value">0</span></div>
+            <div>Rekord: <span id="high-score" class="value">0</span></div>
+            <div>Prędkość: <span id="speed" class="value">Wolno</span></div>
+        </div>
+        <div id="controls">
+            <div class="controls-row">
+                <button id="start">Start</button>
+                <button id="pause" class="secondary">Pauza</button>
+                <button id="reset" class="ghost">Restart</button>
+            </div>
+            <div class="controls-row">
+                <label>
+                    <input id="kid-mode" type="checkbox" checked />
+                    Tryb dziecka
+                </label>
+                <label>
+                    <input id="sound" type="checkbox" checked />
+                    Dźwięk
+                </label>
+            </div>
+            <div class="controls-row">
+                <label for="difficulty">Poziom trudności</label>
+                <select id="difficulty">
+                    <option value="Easy">Łatwy</option>
+                    <option value="Medium">Średni</option>
+                    <option value="Hard">Trudny</option>
+                </select>
+            </div>
+        </div>
+        <div id="canvas-wrapper">
+            <canvas id="snake-canvas"></canvas>
+        </div>
+        <div id="dpad">
+            <span></span>
+            <button data-direction="up">⬆️</button>
+            <span></span>
+            <button data-direction="left">⬅️</button>
+            <button data-direction="down">⬇️</button>
+            <button data-direction="right">➡️</button>
+            <span></span>
+            <span></span>
+        </div>
+        <div id="status"></div>
+        <div id="help">Sterowanie: strzałki / WASD lub przyciski dotykowe.</div>
+    </div>
+
+    <script src="../js/snakeGame.js"></script>
+    <script>
+        const scoreEl = document.getElementById("score");
+        const highScoreEl = document.getElementById("high-score");
+        const speedEl = document.getElementById("speed");
+        const statusEl = document.getElementById("status");
+
+        const bridge = {
+            invokeMethodAsync: (method, ...args) => {
+                switch (method) {
+                    case "OnScoreChanged": {
+                        const [score, highScore, speedLabel] = args;
+                        scoreEl.textContent = score;
+                        highScoreEl.textContent = highScore;
+                        speedEl.textContent = speedLabel;
+                        break;
+                    }
+                    case "OnGameOver": {
+                        const [finalScore] = args;
+                        statusEl.textContent = `Koniec gry! Wynik: ${finalScore}. Kliknij Restart.`;
+                        break;
+                    }
+                    case "OnStateChanged": {
+                        const [state] = args;
+                        if (state === "start") {
+                            statusEl.textContent = "Kliknij Start lub użyj strzałek.";
+                        } else if (state === "paused") {
+                            statusEl.textContent = "Pauza";
+                        } else if (state === "running") {
+                            statusEl.textContent = "";
+                        } else if (state === "gameover") {
+                            statusEl.textContent = "Koniec gry! Kliknij Restart.";
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+        };
+
+        const api = window.snakeGame.init(
+            "snake-canvas",
+            {
+                kidMode: true,
+                difficulty: "Easy",
+                soundEnabled: true
+            },
+            bridge
+        );
+
+        document.getElementById("start").addEventListener("click", () => api.start());
+        document.getElementById("pause").addEventListener("click", () => api.pause());
+        document.getElementById("reset").addEventListener("click", () => api.reset());
+
+        document.getElementById("kid-mode").addEventListener("change", (event) => {
+            api.setKidMode(event.target.checked);
+        });
+
+        document.getElementById("sound").addEventListener("change", (event) => {
+            api.setSoundEnabled(event.target.checked);
+        });
+
+        document.getElementById("difficulty").addEventListener("change", (event) => {
+            api.setDifficulty(event.target.value);
+        });
+
+        document.querySelectorAll("#dpad button[data-direction]").forEach((button) => {
+            button.addEventListener("click", () => api.setDirection(button.dataset.direction));
+        });
+    </script>
+</body>
+</html>
