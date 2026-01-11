@@ -78,25 +78,33 @@
                 {
                     <div class="chart-wrapper">
                         <div class="chart-axis-labels">
-                            <span class="axis-label axis-label-y">Oś X (pionowa): ilość słów na minutę</span>
+                            <span class="axis-label axis-label-y">Oś Y (pionowa): słów na minutę</span>
                             <div class="chart-plot-area">
-                                <svg viewBox="0 0 @ChartWidth @ChartHeight" role="img" aria-label="Wykres słów na minutę">
-                                    <polyline points="@ChartPolyline"
-                                              fill="none"
-                                              stroke="#1b6ec2"
-                                              stroke-width="3" />
-                                    @foreach (var point in chartPoints)
-                                    {
-                                        <circle cx="@point.X" cy="@point.Y" r="4" fill="#4caf50">
-                                            <title>@($"{point.Label}: {Math.Round(point.WordsPerMinute)} sł/min")</title>
-                                        </circle>
-                                    }
-                                </svg>
+                                <div class="chart-main">
+                                    <div class="chart-y-ticks" aria-hidden="true">
+                                        @foreach (var tick in chartYAxisTicks)
+                                        {
+                                            <span>@tick</span>
+                                        }
+                                    </div>
+                                    <svg viewBox="0 0 @ChartWidth @ChartHeight" role="img" aria-label="Wykres słów na minutę">
+                                        <polyline points="@ChartPolyline"
+                                                  fill="none"
+                                                  stroke="#1b6ec2"
+                                                  stroke-width="3" />
+                                        @foreach (var point in chartPoints)
+                                        {
+                                            <circle cx="@point.X" cy="@point.Y" r="4" fill="#4caf50">
+                                                <title>@($"{point.Label}: {Math.Round(point.WordsPerMinute)} sł/min")</title>
+                                            </circle>
+                                        }
+                                    </svg>
+                                </div>
                                 <div class="chart-axis">
                                     <span>@chartStartLabel</span>
                                     <span>@chartEndLabel</span>
                                 </div>
-                                <div class="axis-label axis-label-x">Oś Y (pozioma): data rozgrywki</div>
+                                <div class="axis-label axis-label-x">Oś X (pozioma): data rozgrywki</div>
                             </div>
                         </div>
                     </div>
@@ -120,6 +128,7 @@
     private readonly List<ChartPoint> chartPoints = new();
     private string chartStartLabel = string.Empty;
     private string chartEndLabel = string.Empty;
+    private readonly List<int> chartYAxisTicks = new();
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling(readingResults.Count / (double)PageSize));
 
@@ -141,6 +150,7 @@
     private void BuildChart()
     {
         chartPoints.Clear();
+        chartYAxisTicks.Clear();
         if (readingResults.Count == 0)
         {
             chartStartLabel = string.Empty;
@@ -155,17 +165,50 @@
             maxWpm = 1;
         }
 
+        var scaleStep = CalculateScaleStep(maxWpm);
+        var scaleMax = Math.Max(scaleStep, Math.Ceiling(maxWpm / scaleStep) * scaleStep);
+        for (var value = scaleMax; value >= 0; value -= scaleStep)
+        {
+            chartYAxisTicks.Add((int)value);
+        }
+
         var step = orderedResults.Count == 1 ? 0 : ChartWidth / (double)(orderedResults.Count - 1);
         for (var index = 0; index < orderedResults.Count; index++)
         {
             var result = orderedResults[index];
             var x = orderedResults.Count == 1 ? ChartWidth / 2.0 : index * step;
-            var y = ChartHeight - (result.WordsPerMinute / maxWpm * ChartHeight);
+            var y = ChartHeight - (result.WordsPerMinute / scaleMax * ChartHeight);
             chartPoints.Add(new ChartPoint(x, y, result.WordsPerMinute, result.PlayedAt.ToString("dd.MM.yyyy")));
         }
 
         chartStartLabel = orderedResults.First().PlayedAt.ToString("dd.MM.yyyy");
         chartEndLabel = orderedResults.Last().PlayedAt.ToString("dd.MM.yyyy");
+    }
+
+    private static int CalculateScaleStep(double maxValue)
+    {
+        if (maxValue <= 0)
+        {
+            return 1;
+        }
+
+        var roughStep = maxValue / 4;
+        if (roughStep <= 0)
+        {
+            return 1;
+        }
+
+        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(roughStep)));
+        var normalized = roughStep / magnitude;
+        var niceNormalized = normalized switch
+        {
+            <= 1 => 1,
+            <= 2 => 2,
+            <= 5 => 5,
+            _ => 10
+        };
+
+        return (int)Math.Max(1, niceNormalized * magnitude);
     }
 
     private string FormatDuration(TimeSpan duration)

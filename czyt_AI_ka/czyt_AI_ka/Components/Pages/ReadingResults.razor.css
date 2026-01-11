@@ -67,6 +67,22 @@
     align-items: stretch;
 }
 
+.chart-main {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.chart-y-ticks {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: #666;
+    font-size: 0.8rem;
+    min-width: 2.5rem;
+    text-align: right;
+}
+
 .chart-wrapper svg {
     width: 100%;
     height: auto;
