@@ -196,7 +196,8 @@
         new(ResultsView.LiterkiFirstLetter, "Literki - pierwsza", "Statystyki gry Literki (pierwsza litera)."),
         new(ResultsView.MathPlusMinus, "Matematyka - plus i minus", "Statystyki gry Matematyka (plus i minus)."),
         new(ResultsView.MathArithmetic, "Matematyka - arytmetyka", "Statystyki gry Matematyka (arytmetyka)."),
-        new(ResultsView.MathMultiplication, "Matematyka - mnożenie", "Statystyki gry Matematyka (mnożenie).")
+        new(ResultsView.MathMultiplication, "Matematyka - mnożenie", "Statystyki gry Matematyka (mnożenie)."),
+        new(ResultsView.MathCounting, "Matematyka - liczenie", "Statystyki gry Matematyka (liczenie).")
     };
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling(CurrentResultsCount / (double)PageSize));
@@ -262,6 +263,9 @@
                 break;
             case ResultsView.MathMultiplication:
                 LoadDurationResults(ResultsArchive.GetMathResults(UserId, MathGameMode.Multiplication));
+                break;
+            case ResultsView.MathCounting:
+                LoadDurationResults(ResultsArchive.GetMathResults(UserId, MathGameMode.Counting));
                 break;
         }
 
@@ -414,7 +418,8 @@
         LiterkiFirstLetter,
         MathPlusMinus,
         MathArithmetic,
-        MathMultiplication
+        MathMultiplication,
+        MathCounting
     }
 
     private enum ChartMetric

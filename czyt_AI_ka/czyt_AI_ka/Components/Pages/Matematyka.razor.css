@@ -122,6 +122,10 @@
     grid-template-columns: 1fr;
 }
 
+.math-task-board-counting {
+    gap: 1rem;
+}
+
 .math-column {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 18px;
@@ -151,6 +155,78 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.75rem;
+}
+
+.math-column-counting {
+    gap: 1.1rem;
+}
+
+.math-counting-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.math-counting-task {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    border-radius: 16px;
+    border: 1px solid rgba(47, 62, 102, 0.15);
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.math-counting-shapes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: center;
+    min-height: 42px;
+}
+
+.math-counting-empty {
+    font-size: 0.95rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.math-counting-shape {
+    width: 24px;
+    height: 24px;
+    background: #5c6ac4;
+    display: inline-block;
+}
+
+.math-shape-circle {
+    border-radius: 50%;
+    background: #4f9cf9;
+}
+
+.math-shape-square {
+    background: #f59e0b;
+}
+
+.math-shape-triangle {
+    width: 0;
+    height: 0;
+    background: transparent;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 22px solid #22c55e;
+}
+
+.math-shape-diamond {
+    background: #ec4899;
+    transform: rotate(45deg);
+}
+
+.math-shape-line {
+    width: 28px;
+    height: 6px;
+    border-radius: 6px;
+    background: #111827;
 }
 
 .math-equation {
