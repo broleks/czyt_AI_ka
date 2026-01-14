@@ -50,17 +50,6 @@
             <canvas id="@_canvasId" class="snake-canvas"></canvas>
         </div>
 
-        <div class="snake-dpad">
-            <span></span>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("up"))">⬆️</MudButton>
-            <span></span>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("left"))">⬅️</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("down"))">⬇️</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SendDirection("right"))">➡️</MudButton>
-            <span></span>
-            <span></span>
-        </div>
-
         <MudText Class="snake-help">Sterowanie: strzałki / WASD lub przyciski dotykowe.</MudText>
     </MudCardContent>
 </MudCard>
