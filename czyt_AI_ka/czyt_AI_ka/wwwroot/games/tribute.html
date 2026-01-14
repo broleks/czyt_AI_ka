@@ -205,8 +205,7 @@
         const townAssets = {
             "Gniezno": "games/tribute/gniezno.png",
             "Giecz": "games/tribute/giecz.png",
-            "Ostrów": "games/tribute/ostrow_lednicki.png",
-            "Lednicki": "games/tribute/ostrow_lednicki.png",
+            "Ostrów Lednicki": "games/tribute/ostrow_lednicki.png",
             "Kruszwica": "games/tribute/kruszwica.png",
             "Poznań": "games/tribute/poznan.png",
             "Kraków": "games/tribute/krakow.png",
@@ -220,10 +219,9 @@
         };
 
         const towns = [
-            { id: "gniezno", name: "Gniezno", x: 520, y: 280 },
-            { id: "giecz", name: "Giecz", x: 640, y: 360 },
-            { id: "ostrow", name: "Ostrów", x: 440, y: 360 },
-            { id: "lednicki", name: "Lednicki", x: 360, y: 280 },
+            { id: "gniezno", name: "Gniezno", x: 520, y: 260 },
+            { id: "giecz", name: "Giecz", x: 660, y: 340 },
+            { id: "ostrow_lednicki", name: "Ostrów Lednicki", x: 420, y: 340 },
             { id: "kruszwica", name: "Kruszwica", x: 520, y: 520 },
             { id: "poznan", name: "Poznań", x: 280, y: 420 },
             { id: "krakow", name: "Kraków", x: 680, y: 720 },
@@ -235,9 +233,8 @@
         const connections = [
             ["gniezno", "giecz"],
             ["gniezno", "poznan"],
-            ["gniezno", "ostrow"],
-            ["ostrow", "lednicki"],
-            ["lednicki", "poznan"],
+            ["gniezno", "ostrow_lednicki"],
+            ["ostrow_lednicki", "poznan"],
             ["giecz", "kruszwica"],
             ["kruszwica", "poznan"],
             ["kruszwica", "krakow"],
@@ -335,11 +332,42 @@
             return a + (b - a) * t;
         }
 
-        function positionOnEdge(from, to, progress) {
-            return {
-                x: lerp(from.x, to.x, progress),
-                y: lerp(from.y, to.y, progress)
-            };
+        function buildRoute(fromId, toId) {
+            const from = townIndex.get(fromId);
+            const to = townIndex.get(toId);
+            const points = [{ x: from.x, y: from.y }];
+
+            if (from.x === to.x || from.y === to.y) {
+                points.push({ x: to.x, y: to.y });
+            } else {
+                points.push({ x: to.x, y: from.y }, { x: to.x, y: to.y });
+            }
+
+            let length = 0;
+            for (let i = 1; i < points.length; i++) {
+                length += distance(points[i - 1], points[i]);
+            }
+
+            return { points, length };
+        }
+
+        function positionOnRoute(route, progressDistance) {
+            let remaining = progressDistance;
+            for (let i = 1; i < route.points.length; i++) {
+                const start = route.points[i - 1];
+                const end = route.points[i];
+                const segmentLength = distance(start, end);
+                if (remaining <= segmentLength || i === route.points.length - 1) {
+                    const t = segmentLength === 0 ? 0 : remaining / segmentLength;
+                    return {
+                        x: lerp(start.x, end.x, t),
+                        y: lerp(start.y, end.y, t)
+                    };
+                }
+                remaining -= segmentLength;
+            }
+
+            return { ...route.points[route.points.length - 1] };
         }
 
         function createMover(startId, speed) {
@@ -349,6 +377,7 @@
                 progress: 0,
                 speed,
                 last: null,
+                route: null,
                 position: { ...townIndex.get(startId) }
             };
         }
@@ -359,6 +388,7 @@
             mover.progress = 0;
             mover.speed = speed;
             mover.last = null;
+            mover.route = null;
             mover.position = { ...townIndex.get(startId) };
         }
 
@@ -390,21 +420,25 @@
         function moveAlongEdge(mover, dt) {
             if (!mover.to) return;
 
-            const fromTown = townIndex.get(mover.from);
-            const toTown = townIndex.get(mover.to);
-            const edgeLength = distance(fromTown, toTown) || 1;
-            mover.progress += (mover.speed * dt) / edgeLength;
+            if (!mover.route) {
+                mover.route = buildRoute(mover.from, mover.to);
+            }
 
-            if (mover.progress >= 1 - SNAP_EPSILON) {
+            const routeLength = mover.route.length || 1;
+            mover.progress += mover.speed * dt;
+
+            if (mover.progress >= routeLength - SNAP_EPSILON) {
+                const destination = townIndex.get(mover.to);
                 mover.progress = 0;
                 mover.last = mover.from;
                 mover.from = mover.to;
                 mover.to = null;
-                mover.position = { ...toTown };
+                mover.route = null;
+                mover.position = { ...destination };
                 return true;
             }
 
-            mover.position = positionOnEdge(fromTown, toTown, mover.progress);
+            mover.position = positionOnRoute(mover.route, mover.progress);
             return false;
         }
 
@@ -418,7 +452,7 @@
 
         function scheduleNextSpawn() {
             const { spawnMin, spawnMax } = state.difficulty;
-            state.nextCoinSpawn = spawnMin + Math.random() * (spawnMax - spawnMin);
+            state.nextCoinSpawn = (spawnMin + Math.random() * (spawnMax - spawnMin)) / 1000;
             state.coinSpawnTimer = 0;
         }
 
@@ -506,6 +540,7 @@
         }
 
         function checkCollisions() {
+            if (!state.player.to) return;
             for (const bandit of state.bandits) {
                 const dist = distance(state.player.position, bandit.position);
                 if (dist <= COLLISION_DISTANCE) {
@@ -618,11 +653,16 @@
                 if (next) {
                     state.player.to = next;
                     state.player.progress = 0;
+                    state.player.route = null;
+                    state.desiredDirection = null;
                 }
             }
 
             if (state.player.to) {
-                moveAlongEdge(state.player, dt);
+                const arrived = moveAlongEdge(state.player, dt);
+                if (arrived) {
+                    state.desiredDirection = null;
+                }
             }
 
             updateBandits(dt);
@@ -648,11 +688,12 @@
             ctx.lineWidth = 8;
             ctx.lineCap = "round";
             connections.forEach(([a, b]) => {
-                const townA = townIndex.get(a);
-                const townB = townIndex.get(b);
+                const route = buildRoute(a, b);
                 ctx.beginPath();
-                ctx.moveTo(townA.x, townA.y);
-                ctx.lineTo(townB.x, townB.y);
+                ctx.moveTo(route.points[0].x, route.points[0].y);
+                for (let i = 1; i < route.points.length; i++) {
+                    ctx.lineTo(route.points[i].x, route.points[i].y);
+                }
                 ctx.stroke();
             });
         }
@@ -799,7 +840,7 @@
                 D: { x: 1, y: 0 }
             };
 
-            if (directions[key]) {
+            if (directions[key] && !state.player.to) {
                 state.desiredDirection = directions[key];
             }
         });
