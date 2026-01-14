@@ -209,7 +209,9 @@
             "Kruszwica": "games/tribute/kruszwica.png",
             "Poznań": "games/tribute/poznan.png",
             "Kraków": "games/tribute/krakow.png",
-            "Grzybów": "games/tribute/grzybow.png"
+            "Grzybów": "games/tribute/grzybow.png",
+            "Karczma Północna": "games/tribute/karczma.png",
+            "Karczma Południowa": "games/tribute/karczma.png"
         };
 
         const assetPaths = {
@@ -219,31 +221,41 @@
         };
 
         const towns = [
-            { id: "gniezno", name: "Gniezno", x: 520, y: 260 },
-            { id: "giecz", name: "Giecz", x: 660, y: 340 },
-            { id: "ostrow_lednicki", name: "Ostrów Lednicki", x: 420, y: 340 },
-            { id: "kruszwica", name: "Kruszwica", x: 520, y: 520 },
-            { id: "poznan", name: "Poznań", x: 280, y: 420 },
-            { id: "krakow", name: "Kraków", x: 680, y: 720 },
-            { id: "grzybow", name: "Grzybów", x: 340, y: 660 }
+            { id: "grod_lewy_gora", name: "Gniezno", x: 200, y: 220, type: "town" },
+            { id: "grod_lewy_srodek", name: "Giecz", x: 200, y: 480, type: "town" },
+            { id: "grod_lewy_dol", name: "Ostrów Lednicki", x: 200, y: 740, type: "town" },
+            { id: "grod_srodek", name: "Kruszwica", x: 480, y: 480, type: "town" },
+            { id: "grod_prawy_gora", name: "Poznań", x: 760, y: 220, type: "town" },
+            { id: "grod_prawy_srodek", name: "Kraków", x: 760, y: 480, type: "town" },
+            { id: "grod_prawy_dol", name: "Grzybów", x: 760, y: 740, type: "town" }
         ];
 
-        const townIndex = new Map(towns.map((t) => [t.id, t]));
+        const inns = [
+            { id: "karczma_polnoc", name: "Karczma Północna", x: 480, y: 220, type: "inn" },
+            { id: "karczma_poludnie", name: "Karczma Południowa", x: 480, y: 740, type: "inn" }
+        ];
+
+        const locations = [...towns, ...inns];
+
+        const townIndex = new Map(locations.map((town) => [town.id, town]));
 
         const connections = [
-            ["gniezno", "giecz"],
-            ["gniezno", "poznan"],
-            ["gniezno", "ostrow_lednicki"],
-            ["ostrow_lednicki", "poznan"],
-            ["giecz", "kruszwica"],
-            ["kruszwica", "poznan"],
-            ["kruszwica", "krakow"],
-            ["poznan", "grzybow"],
-            ["grzybow", "krakow"]
+            ["grod_lewy_gora", "karczma_polnoc"],
+            ["karczma_polnoc", "grod_prawy_gora"],
+            ["grod_lewy_srodek", "grod_srodek"],
+            ["grod_srodek", "grod_prawy_srodek"],
+            ["grod_lewy_dol", "karczma_poludnie"],
+            ["karczma_poludnie", "grod_prawy_dol"],
+            ["grod_lewy_gora", "grod_lewy_srodek"],
+            ["grod_lewy_srodek", "grod_lewy_dol"],
+            ["grod_prawy_gora", "grod_prawy_srodek"],
+            ["grod_prawy_srodek", "grod_prawy_dol"],
+            ["karczma_polnoc", "grod_srodek"],
+            ["grod_srodek", "karczma_poludnie"]
         ];
 
         const adjacency = new Map();
-        towns.forEach((town) => adjacency.set(town.id, []));
+        locations.forEach((town) => adjacency.set(town.id, []));
         connections.forEach(([a, b]) => {
             adjacency.get(a).push(b);
             adjacency.get(b).push(a);
@@ -601,10 +613,10 @@
             isRunning: false,
             isGameOver: false,
             isWin: false,
-            player: createMover("gniezno", difficultyConfig.normal.playerSpeed),
+            player: createMover("grod_srodek", difficultyConfig.normal.playerSpeed),
             bandits: [],
-            startTown: "gniezno",
-            banditStarts: ["kruszwica", "krakow", "grzybow"],
+            startTown: "grod_srodek",
+            banditStarts: ["grod_lewy_dol", "grod_prawy_gora", "grod_prawy_dol"],
             desiredDirection: null,
             coins: new Set(),
             coinSpawnTimer: 0,
@@ -698,7 +710,7 @@
             });
         }
 
-        function drawTown(town) {
+        function drawLocation(town) {
             const imgKey = `town-${town.name}`;
             const imgEntry = images[imgKey];
             if (imgEntry?.ok && imgEntry.img) {
@@ -709,36 +721,38 @@
                     TOWN_RADIUS * 2,
                     TOWN_RADIUS * 2
                 );
-            } else {
-                ctx.fillStyle = "#fde68a";
-                ctx.strokeStyle = "#b45309";
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(
-                        town.x - TOWN_RADIUS,
-                        town.y - TOWN_RADIUS,
-                        TOWN_RADIUS * 2,
-                        TOWN_RADIUS * 2,
-                        14
-                    );
-                } else {
-                    ctx.rect(
-                        town.x - TOWN_RADIUS,
-                        town.y - TOWN_RADIUS,
-                        TOWN_RADIUS * 2,
-                        TOWN_RADIUS * 2
-                    );
-                }
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.fillStyle = "#78350f";
-                ctx.font = "12px system-ui";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(town.name, town.x, town.y);
+                return;
             }
+
+            const isInn = town.type === "inn";
+            ctx.fillStyle = isInn ? "#e0f2fe" : "#fde68a";
+            ctx.strokeStyle = isInn ? "#0ea5e9" : "#b45309";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(
+                    town.x - TOWN_RADIUS,
+                    town.y - TOWN_RADIUS,
+                    TOWN_RADIUS * 2,
+                    TOWN_RADIUS * 2,
+                    14
+                );
+            } else {
+                ctx.rect(
+                    town.x - TOWN_RADIUS,
+                    town.y - TOWN_RADIUS,
+                    TOWN_RADIUS * 2,
+                    TOWN_RADIUS * 2
+                );
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = isInn ? "#0c4a6e" : "#78350f";
+            ctx.font = "12px system-ui";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(town.name, town.x, town.y);
         }
 
         function drawCoins() {
@@ -789,7 +803,7 @@
             drawBackground();
             drawRoads();
 
-            towns.forEach(drawTown);
+            locations.forEach(drawLocation);
             drawCoins();
 
             drawMover(state.player, "player", PLAYER_SIZE, "#0ea5e9", "P");

@@ -17,6 +17,7 @@ Wymagane nazwy plików:
 - `poznan.png`
 - `krakow.png`
 - `grzybow.png`
+- `karczma.png`
 - `tax_collector.png`
 - `bandit.png`
 
