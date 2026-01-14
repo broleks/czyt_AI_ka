@@ -75,6 +75,10 @@
                 {
                     <iframe class="pacman-frame" src="games/pacman.html" title="Pac Man"></iframe>
                 }
+                else if (selectedGame == GameType.Tribute)
+                {
+                    <iframe class="pacman-frame" src="games/tribute.html" title="Poborca i Rabusie"></iframe>
+                }
                 else if (selectedGame == GameType.Snake)
                 {
                     <iframe class="pacman-frame" src="games/snake.html" title="Wąż"></iframe>
@@ -89,6 +93,7 @@
     {
         Memory,
         Pacman,
+        Tribute,
         Snake
     }
 
@@ -98,6 +103,7 @@
     {
         new GameCard(GameType.Memory, "Memory", "Odkrywaj pary i trenuj pamięć.", "images/games/memory.svg"),
         new GameCard(GameType.Pacman, "Pac Man", "Zbieraj punkty i uciekaj przed duchami.", "images/games/pacman.svg"),
+        new GameCard(GameType.Tribute, "Poborca i Rabusie", "Zbieraj podatki i unikaj rabusiów.", "images/games/tribute.svg"),
         new GameCard(GameType.Snake, "Wąż", "Zbieraj owoce i rośnij!", "images/games/snake.svg")
     };
 

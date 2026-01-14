@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <title>Poborca i Rabusie</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(circle at top, #f6f3ea 0%, #e7dfc7 60%, #d6c9a6 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #1f2937;
+            overflow: hidden;
+        }
+
+        #game-wrapper {
+            width: min(1020px, 96vw);
+            height: min(920px, 95vh);
+            background: rgba(255, 255, 255, 0.94);
+            border-radius: 24px;
+            box-shadow: 0 18px 40px rgba(30, 41, 59, 0.2);
+            padding: 18px 22px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        #title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        #subtitle {
+            font-size: 14px;
+            color: #475569;
+        }
+
+        #hud {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        #hud span.value {
+            font-weight: 800;
+        }
+
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        label {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        select {
+            border-radius: 999px;
+            border: 1px solid #cbd5f5;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        button {
+            border: none;
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #2563eb;
+            color: #fff;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        button.secondary {
+            background: #7c3aed;
+        }
+
+        button.ghost {
+            background: #e2e8f0;
+            color: #1f2937;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.2);
+        }
+
+        #canvas-wrapper {
+            flex: 1 1 auto;
+            min-height: 240px;
+            border-radius: 18px;
+            background: #f8f5eb;
+            padding: 8px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 14px;
+        }
+
+        #message {
+            font-size: 14px;
+            min-height: 1.2em;
+            color: #334155;
+        }
+
+        #help {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        @media (max-width: 720px) {
+            #game-wrapper {
+                padding: 14px 16px 16px;
+                gap: 10px;
+            }
+
+            #controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <div>
+            <div id="title">Poborca i Rabusie</div>
+            <div id="subtitle">Zbierz podatki dla Mieszka i wróć bezpiecznie do grodów.</div>
+        </div>
+        <div id="hud">
+            <div>Monety: <span id="coins" class="value">0</span>/<span id="target" class="value">0</span></div>
+            <div>Życia: <span id="lives" class="value">3</span></div>
+            <div>Rabusie: <span id="bandits" class="value">0</span></div>
+            <div>Trudność: <span id="difficulty" class="value">Łatwa</span></div>
+        </div>
+        <div id="controls">
+            <label>
+                Poziom trudności
+                <select id="difficulty-select">
+                    <option value="easy">Łatwa</option>
+                    <option value="normal" selected>Normalna</option>
+                    <option value="hard">Trudna</option>
+                </select>
+            </label>
+            <button id="start">Start / Restart</button>
+            <button id="pause" class="secondary">Pauza</button>
+        </div>
+        <div id="canvas-wrapper">
+            <canvas id="game"></canvas>
+        </div>
+        <div id="message">Zbierz podatki dla Mieszka! Uwaga na rabusiów!</div>
+        <div id="help">Sterowanie: strzałki lub WASD. Poruszasz się tylko po drogach.</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        const coinsEl = document.getElementById("coins");
+        const targetEl = document.getElementById("target");
+        const livesEl = document.getElementById("lives");
+        const banditsEl = document.getElementById("bandits");
+        const difficultyEl = document.getElementById("difficulty");
+        const messageEl = document.getElementById("message");
+        const difficultySelect = document.getElementById("difficulty-select");
+        const startBtn = document.getElementById("start");
+        const pauseBtn = document.getElementById("pause");
+
+        const GAME_WIDTH = 960;
+        const GAME_HEIGHT = 960;
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+
+        const TOWN_RADIUS = 52;
+        const COIN_RADIUS = 12;
+        const PLAYER_SIZE = 70;
+        const BANDIT_SIZE = 64;
+        const COLLISION_DISTANCE = 24;
+        const SNAP_EPSILON = 0.01;
+
+        const townAssets = {
+            "Gniezno": "games/tribute/gniezno.png",
+            "Giecz": "games/tribute/giecz.png",
+            "Ostrów": "games/tribute/ostrow_lednicki.png",
+            "Lednicki": "games/tribute/ostrow_lednicki.png",
+            "Kruszwica": "games/tribute/kruszwica.png",
+            "Poznań": "games/tribute/poznan.png",
+            "Kraków": "games/tribute/krakow.png",
+            "Grzybów": "games/tribute/grzybow.png"
+        };
+
+        const assetPaths = {
+            background: "games/tribute/background.png",
+            player: "games/tribute/tax_collector.png",
+            bandit: "games/tribute/bandit.png"
+        };
+
+        const towns = [
+            { id: "gniezno", name: "Gniezno", x: 520, y: 280 },
+            { id: "giecz", name: "Giecz", x: 640, y: 360 },
+            { id: "ostrow", name: "Ostrów", x: 440, y: 360 },
+            { id: "lednicki", name: "Lednicki", x: 360, y: 280 },
+            { id: "kruszwica", name: "Kruszwica", x: 520, y: 520 },
+            { id: "poznan", name: "Poznań", x: 280, y: 420 },
+            { id: "krakow", name: "Kraków", x: 680, y: 720 },
+            { id: "grzybow", name: "Grzybów", x: 340, y: 660 }
+        ];
+
+        const townIndex = new Map(towns.map((t) => [t.id, t]));
+
+        const connections = [
+            ["gniezno", "giecz"],
+            ["gniezno", "poznan"],
+            ["gniezno", "ostrow"],
+            ["ostrow", "lednicki"],
+            ["lednicki", "poznan"],
+            ["giecz", "kruszwica"],
+            ["kruszwica", "poznan"],
+            ["kruszwica", "krakow"],
+            ["poznan", "grzybow"],
+            ["grzybow", "krakow"]
+        ];
+
+        const adjacency = new Map();
+        towns.forEach((town) => adjacency.set(town.id, []));
+        connections.forEach(([a, b]) => {
+            adjacency.get(a).push(b);
+            adjacency.get(b).push(a);
+        });
+
+        const difficultyConfig = {
+            easy: {
+                label: "Łatwa",
+                bandits: 1,
+                banditSpeed: 60,
+                playerSpeed: 90,
+                targetCoins: 10,
+                spawnMin: 4000,
+                spawnMax: 6000,
+                banditFocus: 0.2
+            },
+            normal: {
+                label: "Normalna",
+                bandits: 2,
+                banditSpeed: 80,
+                playerSpeed: 100,
+                targetCoins: 15,
+                spawnMin: 3000,
+                spawnMax: 5000,
+                banditFocus: 0.5
+            },
+            hard: {
+                label: "Trudna",
+                bandits: 3,
+                banditSpeed: 105,
+                playerSpeed: 110,
+                targetCoins: 20,
+                spawnMin: 2200,
+                spawnMax: 3800,
+                banditFocus: 0.75
+            }
+        };
+
+        const images = {};
+
+        function loadImage(key, src) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve({ key, img, ok: true });
+                img.onerror = () => resolve({ key, img: null, ok: false });
+                img.src = src;
+            });
+        }
+
+        async function preloadAssets() {
+            const tasks = [
+                loadImage("background", assetPaths.background),
+                loadImage("player", assetPaths.player),
+                loadImage("bandit", assetPaths.bandit)
+            ];
+
+            for (const [name, path] of Object.entries(townAssets)) {
+                tasks.push(loadImage(`town-${name}`, path));
+            }
+
+            const results = await Promise.all(tasks);
+            results.forEach((result) => {
+                images[result.key] = { img: result.img, ok: result.ok };
+            });
+        }
+
+        function setMessage(text) {
+            messageEl.textContent = text;
+        }
+
+        function setHud() {
+            coinsEl.textContent = state.collected;
+            targetEl.textContent = state.targetCoins;
+            livesEl.textContent = state.lives;
+            banditsEl.textContent = state.bandits.length;
+            difficultyEl.textContent = state.difficulty.label;
+        }
+
+        function distance(a, b) {
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            return Math.hypot(dx, dy);
+        }
+
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+
+        function positionOnEdge(from, to, progress) {
+            return {
+                x: lerp(from.x, to.x, progress),
+                y: lerp(from.y, to.y, progress)
+            };
+        }
+
+        function createMover(startId, speed) {
+            return {
+                from: startId,
+                to: null,
+                progress: 0,
+                speed,
+                last: null,
+                position: { ...townIndex.get(startId) }
+            };
+        }
+
+        function resetMover(mover, startId, speed) {
+            mover.from = startId;
+            mover.to = null;
+            mover.progress = 0;
+            mover.speed = speed;
+            mover.last = null;
+            mover.position = { ...townIndex.get(startId) };
+        }
+
+        function chooseNeighborByDirection(fromId, direction) {
+            const options = adjacency.get(fromId) || [];
+            if (!direction || options.length === 0) {
+                return null;
+            }
+
+            const fromTown = townIndex.get(fromId);
+            let best = null;
+            let bestScore = -Infinity;
+
+            options.forEach((neighborId) => {
+                const neighbor = townIndex.get(neighborId);
+                const vec = { x: neighbor.x - fromTown.x, y: neighbor.y - fromTown.y };
+                const length = Math.hypot(vec.x, vec.y) || 1;
+                const norm = { x: vec.x / length, y: vec.y / length };
+                const score = norm.x * direction.x + norm.y * direction.y;
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = neighborId;
+                }
+            });
+
+            return bestScore > 0.25 ? best : null;
+        }
+
+        function moveAlongEdge(mover, dt) {
+            if (!mover.to) return;
+
+            const fromTown = townIndex.get(mover.from);
+            const toTown = townIndex.get(mover.to);
+            const edgeLength = distance(fromTown, toTown) || 1;
+            mover.progress += (mover.speed * dt) / edgeLength;
+
+            if (mover.progress >= 1 - SNAP_EPSILON) {
+                mover.progress = 0;
+                mover.last = mover.from;
+                mover.from = mover.to;
+                mover.to = null;
+                mover.position = { ...toTown };
+                return true;
+            }
+
+            mover.position = positionOnEdge(fromTown, toTown, mover.progress);
+            return false;
+        }
+
+        function spawnCoin() {
+            const available = towns.map((town) => town.id).filter((id) => !state.coins.has(id));
+            if (available.length === 0) return;
+
+            const pick = available[Math.floor(Math.random() * available.length)];
+            state.coins.add(pick);
+        }
+
+        function scheduleNextSpawn() {
+            const { spawnMin, spawnMax } = state.difficulty;
+            state.nextCoinSpawn = spawnMin + Math.random() * (spawnMax - spawnMin);
+            state.coinSpawnTimer = 0;
+        }
+
+        function updateCoins(dt) {
+            state.coinSpawnTimer += dt;
+            if (state.coinSpawnTimer >= state.nextCoinSpawn) {
+                spawnCoin();
+                scheduleNextSpawn();
+            }
+        }
+
+        function collectCoinIfAny() {
+            if (state.coins.has(state.player.from) && !state.player.to) {
+                state.coins.delete(state.player.from);
+                state.collected += 1;
+                setHud();
+                if (state.collected >= state.targetCoins) {
+                    winGame();
+                }
+            }
+        }
+
+        function updateBanditChoice(bandit) {
+            const neighbors = adjacency.get(bandit.from) || [];
+            if (neighbors.length === 0) return;
+
+            const choices = neighbors.filter((id) => id !== bandit.last);
+            const candidates = choices.length > 0 ? choices : neighbors;
+
+            const preferTarget = Math.random() < state.difficulty.banditFocus;
+            let targetTown = null;
+
+            if (preferTarget) {
+                if (state.coins.size > 0) {
+                    let nearest = null;
+                    let bestDist = Infinity;
+                    state.coins.forEach((coinId) => {
+                        const candidate = townIndex.get(coinId);
+                        const dist = distance(bandit.position, candidate);
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            nearest = candidate;
+                        }
+                    });
+                    targetTown = nearest;
+                }
+
+                if (!targetTown) {
+                    targetTown = townIndex.get(state.player.from);
+                }
+            }
+
+            if (!targetTown) {
+                bandit.to = candidates[Math.floor(Math.random() * candidates.length)];
+                bandit.progress = 0;
+                return;
+            }
+
+            let best = null;
+            let bestDist = Infinity;
+            candidates.forEach((neighborId) => {
+                const neighbor = townIndex.get(neighborId);
+                const dist = distance(neighbor, targetTown);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = neighborId;
+                }
+            });
+
+            bandit.to = best ?? candidates[0];
+            bandit.progress = 0;
+        }
+
+        function updateBandits(dt) {
+            for (const bandit of state.bandits) {
+                if (!bandit.to) {
+                    updateBanditChoice(bandit);
+                }
+
+                const arrived = moveAlongEdge(bandit, dt);
+                if (arrived && state.coins.has(bandit.from)) {
+                    state.coins.delete(bandit.from);
+                }
+            }
+        }
+
+        function checkCollisions() {
+            for (const bandit of state.bandits) {
+                const dist = distance(state.player.position, bandit.position);
+                if (dist <= COLLISION_DISTANCE) {
+                    loseLife();
+                    break;
+                }
+            }
+        }
+
+        function loseLife() {
+            state.lives -= 1;
+            state.collected = 0;
+            setHud();
+
+            if (state.lives <= 0) {
+                gameOver();
+                return;
+            }
+
+            setMessage("Uwaga! Rabusie dopadli poborcę.");
+            resetRoundPositions();
+        }
+
+        function gameOver() {
+            state.isRunning = false;
+            state.isGameOver = true;
+            setMessage("Koniec gry! Naciśnij Start, aby zagrać ponownie.");
+        }
+
+        function winGame() {
+            state.isRunning = false;
+            state.isWin = true;
+            setMessage("Wygrana! Mieszko jest dumny z podatków!");
+        }
+
+        function resetRoundPositions() {
+            resetMover(state.player, state.startTown, state.difficulty.playerSpeed);
+            state.bandits.forEach((bandit, index) => {
+                const start = state.banditStarts[index % state.banditStarts.length];
+                resetMover(bandit, start, state.difficulty.banditSpeed);
+            });
+        }
+
+        function buildBandits() {
+            const bandits = [];
+            for (let i = 0; i < state.difficulty.bandits; i++) {
+                const startId = state.banditStarts[i % state.banditStarts.length];
+                bandits.push(createMover(startId, state.difficulty.banditSpeed));
+            }
+            state.bandits = bandits;
+        }
+
+        const state = {
+            difficulty: difficultyConfig.normal,
+            lives: 3,
+            collected: 0,
+            targetCoins: 15,
+            isRunning: false,
+            isGameOver: false,
+            isWin: false,
+            player: createMover("gniezno", difficultyConfig.normal.playerSpeed),
+            bandits: [],
+            startTown: "gniezno",
+            banditStarts: ["kruszwica", "krakow", "grzybow"],
+            desiredDirection: null,
+            coins: new Set(),
+            coinSpawnTimer: 0,
+            nextCoinSpawn: 0
+        };
+
+        function applyDifficulty(levelKey) {
+            state.difficulty = difficultyConfig[levelKey];
+            state.targetCoins = state.difficulty.targetCoins;
+            state.player.speed = state.difficulty.playerSpeed;
+            buildBandits();
+            setHud();
+        }
+
+        function startGame() {
+            state.lives = 3;
+            state.collected = 0;
+            state.coins.clear();
+            state.isRunning = true;
+            state.isGameOver = false;
+            state.isWin = false;
+            state.desiredDirection = null;
+            resetRoundPositions();
+            scheduleNextSpawn();
+            setHud();
+            pauseBtn.textContent = "Pauza";
+            setMessage("Zbierz podatki dla Mieszka! Uwaga na rabusiów!");
+        }
+
+        function togglePause() {
+            if (state.isGameOver || state.isWin) return;
+            state.isRunning = !state.isRunning;
+            pauseBtn.textContent = state.isRunning ? "Pauza" : "Wznów";
+            if (!state.isRunning) {
+                setMessage("Pauza. Kliknij Wznów, aby kontynuować.");
+            } else {
+                setMessage("Zbierz podatki dla Mieszka! Uwaga na rabusiów!");
+            }
+        }
+
+        function update(dt) {
+            if (!state.isRunning) return;
+
+            if (!state.player.to) {
+                const next = chooseNeighborByDirection(state.player.from, state.desiredDirection);
+                if (next) {
+                    state.player.to = next;
+                    state.player.progress = 0;
+                }
+            }
+
+            if (state.player.to) {
+                moveAlongEdge(state.player, dt);
+            }
+
+            updateBandits(dt);
+            updateCoins(dt);
+            collectCoinIfAny();
+            checkCollisions();
+        }
+
+        function drawBackground() {
+            if (images.background?.ok && images.background.img) {
+                ctx.drawImage(images.background.img, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+            } else {
+                const gradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+                gradient.addColorStop(0, "#f3ebd5");
+                gradient.addColorStop(1, "#e3d1b0");
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            }
+        }
+
+        function drawRoads() {
+            ctx.strokeStyle = "#9f7f4f";
+            ctx.lineWidth = 8;
+            ctx.lineCap = "round";
+            connections.forEach(([a, b]) => {
+                const townA = townIndex.get(a);
+                const townB = townIndex.get(b);
+                ctx.beginPath();
+                ctx.moveTo(townA.x, townA.y);
+                ctx.lineTo(townB.x, townB.y);
+                ctx.stroke();
+            });
+        }
+
+        function drawTown(town) {
+            const imgKey = `town-${town.name}`;
+            const imgEntry = images[imgKey];
+            if (imgEntry?.ok && imgEntry.img) {
+                ctx.drawImage(
+                    imgEntry.img,
+                    town.x - TOWN_RADIUS,
+                    town.y - TOWN_RADIUS,
+                    TOWN_RADIUS * 2,
+                    TOWN_RADIUS * 2
+                );
+            } else {
+                ctx.fillStyle = "#fde68a";
+                ctx.strokeStyle = "#b45309";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(
+                        town.x - TOWN_RADIUS,
+                        town.y - TOWN_RADIUS,
+                        TOWN_RADIUS * 2,
+                        TOWN_RADIUS * 2,
+                        14
+                    );
+                } else {
+                    ctx.rect(
+                        town.x - TOWN_RADIUS,
+                        town.y - TOWN_RADIUS,
+                        TOWN_RADIUS * 2,
+                        TOWN_RADIUS * 2
+                    );
+                }
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = "#78350f";
+                ctx.font = "12px system-ui";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(town.name, town.x, town.y);
+            }
+        }
+
+        function drawCoins() {
+            ctx.fillStyle = "#facc15";
+            ctx.strokeStyle = "#ca8a04";
+            ctx.lineWidth = 2;
+            state.coins.forEach((townId) => {
+                const town = townIndex.get(townId);
+                const offset = { x: 34, y: -24 };
+                const x = town.x + offset.x;
+                const y = town.y + offset.y;
+                ctx.beginPath();
+                ctx.arc(x, y, COIN_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.strokeStyle = "#fef08a";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, COIN_RADIUS - 4, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.strokeStyle = "#ca8a04";
+            });
+        }
+
+        function drawMover(mover, imgKey, size, fallbackColor, label) {
+            const entry = images[imgKey];
+            const x = mover.position.x;
+            const y = mover.position.y;
+            if (entry?.ok && entry.img) {
+                ctx.drawImage(entry.img, x - size / 2, y - size / 2, size, size);
+                return;
+            }
+
+            ctx.fillStyle = fallbackColor;
+            ctx.beginPath();
+            ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "11px system-ui";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, x, y);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            drawBackground();
+            drawRoads();
+
+            towns.forEach(drawTown);
+            drawCoins();
+
+            drawMover(state.player, "player", PLAYER_SIZE, "#0ea5e9", "P");
+            state.bandits.forEach((bandit) =>
+                drawMover(bandit, "bandit", BANDIT_SIZE, "#ef4444", "R")
+            );
+        }
+
+        let lastTime = 0;
+        let stepAccum = 0;
+        const STEP_TIME = 40;
+
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            stepAccum += dt;
+            while (stepAccum >= STEP_TIME) {
+                update(STEP_TIME / 1000);
+                stepAccum -= STEP_TIME;
+            }
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener("keydown", (e) => {
+            const key = e.key;
+            if (key === " " || key === "Spacebar") {
+                e.preventDefault();
+                togglePause();
+                return;
+            }
+
+            const directions = {
+                ArrowUp: { x: 0, y: -1 },
+                ArrowDown: { x: 0, y: 1 },
+                ArrowLeft: { x: -1, y: 0 },
+                ArrowRight: { x: 1, y: 0 },
+                w: { x: 0, y: -1 },
+                W: { x: 0, y: -1 },
+                s: { x: 0, y: 1 },
+                S: { x: 0, y: 1 },
+                a: { x: -1, y: 0 },
+                A: { x: -1, y: 0 },
+                d: { x: 1, y: 0 },
+                D: { x: 1, y: 0 }
+            };
+
+            if (directions[key]) {
+                state.desiredDirection = directions[key];
+            }
+        });
+
+        difficultySelect.addEventListener("change", (e) => {
+            const value = e.target.value;
+            applyDifficulty(value);
+            startGame();
+        });
+
+        startBtn.addEventListener("click", () => {
+            applyDifficulty(difficultySelect.value);
+            startGame();
+        });
+
+        pauseBtn.addEventListener("click", () => togglePause());
+
+        preloadAssets().then(() => {
+            applyDifficulty("normal");
+            startGame();
+            requestAnimationFrame(gameLoop);
+        });
+    </script>
+</body>
+</html>
