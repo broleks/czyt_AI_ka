@@ -199,6 +199,11 @@
         canvas.height = rows * tileSize;
         const safeZoneColumns = 2;
         const safeZoneStart = cols - safeZoneColumns;
+        // Wstaw ścieżki do obrazków PNG (np. "images/games/fox-den.png").
+        const foxDenImageSrc = "";
+        const coopImageSrc = "";
+        const foxDenImage = new Image();
+        const coopImage = new Image();
         const difficultyConfig = {
             easy: {
                 label: "Łatwy",
@@ -223,6 +228,7 @@
             grainsToWin: difficultyConfig.medium.grainsToWin
         };
         const foxDen = { x: 0, y: 0 };
+        const coopZone = { x: safeZoneStart, y: 0, width: safeZoneColumns, height: 2 };
 
         let chick = { x: 0, y: 0 };
         let grain = { x: 0, y: 0 };
@@ -235,6 +241,16 @@
         let foxSpawnId;
         let foxMoveId;
         let foxLifetimeId;
+
+        if (foxDenImageSrc) {
+            foxDenImage.src = foxDenImageSrc;
+            foxDenImage.onload = () => drawScene();
+        }
+
+        if (coopImageSrc) {
+            coopImage.src = coopImageSrc;
+            coopImage.onload = () => drawScene();
+        }
 
         function placeGrain() {
             let newX;
@@ -290,6 +306,15 @@
             ctx.strokeStyle = "#b33131";
             ctx.lineWidth = 2;
             ctx.strokeRect(foxDen.x * tileSize, foxDen.y * tileSize, tileSize, tileSize);
+            if (foxDenImageSrc && foxDenImage.complete) {
+                ctx.drawImage(
+                    foxDenImage,
+                    foxDen.x * tileSize,
+                    foxDen.y * tileSize,
+                    tileSize,
+                    tileSize
+                );
+            }
 
             ctx.strokeStyle = "rgba(0,0,0,0.1)";
             for (let x = 0; x <= cols; x += 1) {
@@ -324,6 +349,16 @@
                 ctx.stroke();
             }
             ctx.restore();
+
+            if (coopImageSrc && coopImage.complete) {
+                ctx.drawImage(
+                    coopImage,
+                    coopZone.x * tileSize,
+                    coopZone.y * tileSize,
+                    coopZone.width * tileSize,
+                    coopZone.height * tileSize
+                );
+            }
 
             ctx.font = `${tileSize * 0.8}px "Segoe UI Emoji"`;
             ctx.textAlign = "center";
