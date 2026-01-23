@@ -199,9 +199,8 @@
         canvas.height = rows * tileSize;
         const safeZoneColumns = 2;
         const safeZoneStart = cols - safeZoneColumns;
-        // Wstaw ścieżki do obrazków PNG (np. "images/games/fox-den.png").
-        const foxDenImageSrc = "";
-        const coopImageSrc = "";
+        const foxDenImageSrc = "images/games/fox-den.png";
+        const coopImageSrc = "images/games/coop.png";
         const foxDenImage = new Image();
         const coopImage = new Image();
         const difficultyConfig = {
@@ -227,12 +226,12 @@
             foxActiveDurationMs: 10000,
             grainsToWin: difficultyConfig.medium.grainsToWin
         };
-        const foxDen = { x: 0, y: 0 };
+        const foxDen = { x: 0, y: 0, width: 2, height: 2 };
         const coopZone = { x: safeZoneStart, y: 0, width: safeZoneColumns, height: 2 };
 
         let chick = { x: 0, y: 0 };
         let grain = { x: 0, y: 0 };
-        let fox = { x: 0, y: 0, active: false };
+        let fox = { x: 0, y: 0, active: false, returning: false };
         let score = 0;
         let lives = 3;
         let timeElapsed = 0;
@@ -302,17 +301,27 @@
             ctx.fillRect(safeZoneX, 0, safeZoneColumns * tileSize, canvas.height);
 
             ctx.fillStyle = "#e54848";
-            ctx.fillRect(foxDen.x * tileSize, foxDen.y * tileSize, tileSize, tileSize);
+            ctx.fillRect(
+                foxDen.x * tileSize,
+                foxDen.y * tileSize,
+                foxDen.width * tileSize,
+                foxDen.height * tileSize
+            );
             ctx.strokeStyle = "#b33131";
             ctx.lineWidth = 2;
-            ctx.strokeRect(foxDen.x * tileSize, foxDen.y * tileSize, tileSize, tileSize);
+            ctx.strokeRect(
+                foxDen.x * tileSize,
+                foxDen.y * tileSize,
+                foxDen.width * tileSize,
+                foxDen.height * tileSize
+            );
             if (foxDenImageSrc && foxDenImage.complete) {
                 ctx.drawImage(
                     foxDenImage,
                     foxDen.x * tileSize,
                     foxDen.y * tileSize,
-                    tileSize,
-                    tileSize
+                    foxDen.width * tileSize,
+                    foxDen.height * tileSize
                 );
             }
 
@@ -365,7 +374,7 @@
             ctx.textBaseline = "middle";
             ctx.fillText("🐣", (chick.x + 0.5) * tileSize, (chick.y + 0.5) * tileSize);
             ctx.fillText("🌾", (grain.x + 0.5) * tileSize, (grain.y + 0.5) * tileSize);
-            if (fox.active || (fox.x === foxDen.x && fox.y === foxDen.y)) {
+            if (fox.active) {
                 ctx.fillText("🦊", (fox.x + 0.5) * tileSize, (fox.y + 0.5) * tileSize);
             }
         }
@@ -401,26 +410,36 @@
             if (fox.active || isWin) {
                 return;
             }
-            fox = { x: foxDen.x, y: foxDen.y, active: true };
+            fox = { x: foxDen.x, y: foxDen.y, active: true, returning: false };
             drawScene();
             clearInterval(foxMoveId);
             foxMoveId = setInterval(moveFox, difficultySettings.foxSpeedMs);
             clearTimeout(foxLifetimeId);
             foxLifetimeId = setTimeout(() => {
-                despawnFox();
+                startReturnToDen();
             }, difficultySettings.foxActiveDurationMs);
         }
 
+        function startReturnToDen() {
+            if (!fox.active) {
+                return;
+            }
+            fox = { ...fox, returning: true };
+        }
+
         function despawnFox() {
-            fox = { x: foxDen.x, y: foxDen.y, active: false };
+            fox = { x: foxDen.x, y: foxDen.y, active: false, returning: false };
             clearInterval(foxMoveId);
             clearTimeout(foxLifetimeId);
             drawScene();
         }
 
         function stopFox() {
-            despawnFox();
+            fox = { x: foxDen.x, y: foxDen.y, active: false, returning: false };
+            clearInterval(foxMoveId);
+            clearTimeout(foxLifetimeId);
             clearInterval(foxSpawnId);
+            drawScene();
         }
 
         function handleFoxCatch() {
@@ -435,26 +454,71 @@
                 return;
             }
 
-            const dx = chick.x - fox.x;
-            const dy = chick.y - fox.y;
-            const stepOptions = [];
+            if (fox.returning) {
+                const targetX = Math.min(
+                    foxDen.x + foxDen.width - 1,
+                    Math.max(foxDen.x, fox.x)
+                );
+                const targetY = Math.min(
+                    foxDen.y + foxDen.height - 1,
+                    Math.max(foxDen.y, fox.y)
+                );
+                const dx = targetX - fox.x;
+                const dy = targetY - fox.y;
+                const stepOptions = [];
 
-            if (dx !== 0) {
-                stepOptions.push({
-                    x: Math.min(cols - 1, Math.max(0, fox.x + Math.sign(dx))),
-                    y: fox.y
-                });
-            }
-            if (dy !== 0) {
-                stepOptions.push({
-                    x: fox.x,
-                    y: Math.min(rows - 1, Math.max(0, fox.y + Math.sign(dy)))
-                });
-            }
+                if (dx !== 0) {
+                    stepOptions.push({
+                        x: Math.min(cols - 1, Math.max(0, fox.x + Math.sign(dx))),
+                        y: fox.y
+                    });
+                }
+                if (dy !== 0) {
+                    stepOptions.push({
+                        x: fox.x,
+                        y: Math.min(rows - 1, Math.max(0, fox.y + Math.sign(dy)))
+                    });
+                }
 
-            const nextStep = stepOptions.find((step) => !isSafeZoneColumn(step.x));
-            if (nextStep) {
-                fox = { ...fox, x: nextStep.x, y: nextStep.y };
+                const nextStep = stepOptions[0];
+                if (nextStep) {
+                    fox = { ...fox, x: nextStep.x, y: nextStep.y };
+                }
+
+                if (
+                    fox.x >= foxDen.x &&
+                    fox.x < foxDen.x + foxDen.width &&
+                    fox.y >= foxDen.y &&
+                    fox.y < foxDen.y + foxDen.height
+                ) {
+                    fox = { x: foxDen.x, y: foxDen.y, active: false, returning: false };
+                    clearInterval(foxMoveId);
+                    clearTimeout(foxLifetimeId);
+                    drawScene();
+                    return;
+                }
+            } else {
+                const dx = chick.x - fox.x;
+                const dy = chick.y - fox.y;
+                const stepOptions = [];
+
+                if (dx !== 0) {
+                    stepOptions.push({
+                        x: Math.min(cols - 1, Math.max(0, fox.x + Math.sign(dx))),
+                        y: fox.y
+                    });
+                }
+                if (dy !== 0) {
+                    stepOptions.push({
+                        x: fox.x,
+                        y: Math.min(rows - 1, Math.max(0, fox.y + Math.sign(dy)))
+                    });
+                }
+
+                const nextStep = stepOptions.find((step) => !isSafeZoneColumn(step.x));
+                if (nextStep) {
+                    fox = { ...fox, x: nextStep.x, y: nextStep.y };
+                }
             }
 
             if (fox.active && chick.x === fox.x && chick.y === fox.y) {
