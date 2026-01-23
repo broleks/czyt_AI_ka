@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kurczaczek i Ziarenka</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Segoe UI", system-ui, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f7f1d4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .game-shell {
+            width: min(860px, 96vw);
+            background: #fff7e8;
+            border-radius: 18px;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            margin: 0;
+        }
+
+        .stats {
+            display: flex;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            background: #d3f1a6;
+            border-radius: 14px;
+            border: 3px solid #9fc35c;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            max-width: 260px;
+            margin: 0 auto;
+        }
+
+        .controls button,
+        .restart-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px;
+            background: #ffd566;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .controls button:active,
+        .restart-btn:active {
+            transform: translateY(1px);
+        }
+
+        .controls button:focus-visible,
+        .restart-btn:focus-visible {
+            outline: 2px solid #d6a843;
+            outline-offset: 2px;
+        }
+
+        .restart-btn {
+            justify-self: center;
+            min-width: 180px;
+        }
+
+        .hint {
+            font-size: 0.9rem;
+            color: #4a4a4a;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-shell">
+        <header>
+            <h1>Kurczaczek i Ziarenka</h1>
+            <div class="stats">
+                <span id="score">Wynik: 0</span>
+                <span id="time">Czas: 0 s</span>
+            </div>
+        </header>
+
+        <canvas id="gameCanvas" width="600" height="420" aria-label="Plansza gry"></canvas>
+
+        <div class="controls" aria-label="Sterowanie">
+            <span></span>
+            <button type="button" data-direction="up">▲</button>
+            <span></span>
+            <button type="button" data-direction="left">◀</button>
+            <button type="button" data-direction="down">▼</button>
+            <button type="button" data-direction="right">▶</button>
+        </div>
+
+        <button class="restart-btn" type="button" id="restart">Zagraj ponownie</button>
+        <div class="hint">Steruj strzałkami na klawiaturze lub przyciskami na ekranie.</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const timeEl = document.getElementById("time");
+        const restartBtn = document.getElementById("restart");
+        const controlButtons = document.querySelectorAll(".controls button");
+
+        const gridSize = 10;
+        const cols = 12;
+        const rows = 8;
+        const tileSize = canvas.width / cols;
+
+        let chick = { x: 0, y: 0 };
+        let grain = { x: 0, y: 0 };
+        let score = 0;
+        let timeElapsed = 0;
+        let timerId;
+
+        function placeGrain() {
+            let newX;
+            let newY;
+            do {
+                newX = Math.floor(Math.random() * cols);
+                newY = Math.floor(Math.random() * rows);
+            } while (newX === chick.x && newY === chick.y);
+            grain = { x: newX, y: newY };
+        }
+
+        function resetGame() {
+            chick = { x: Math.floor(cols / 2), y: Math.floor(rows / 2) };
+            score = 0;
+            timeElapsed = 0;
+            placeGrain();
+            updateStats();
+            drawScene();
+            clearInterval(timerId);
+            timerId = setInterval(() => {
+                timeElapsed += 1;
+                updateStats();
+            }, 1000);
+        }
+
+        function updateStats() {
+            scoreEl.textContent = `Wynik: ${score}`;
+            timeEl.textContent = `Czas: ${timeElapsed} s`;
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#c4e887";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = "rgba(0,0,0,0.1)";
+            for (let x = 0; x <= cols; x += 1) {
+                ctx.beginPath();
+                ctx.moveTo(x * tileSize, 0);
+                ctx.lineTo(x * tileSize, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= rows; y += 1) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * tileSize);
+                ctx.lineTo(canvas.width, y * tileSize);
+                ctx.stroke();
+            }
+
+            ctx.font = `${tileSize * 0.8}px "Segoe UI Emoji"`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🐣", (chick.x + 0.5) * tileSize, (chick.y + 0.5) * tileSize);
+            ctx.fillText("🌾", (grain.x + 0.5) * tileSize, (grain.y + 0.5) * tileSize);
+        }
+
+        function moveChick(dx, dy) {
+            const newX = Math.min(cols - 1, Math.max(0, chick.x + dx));
+            const newY = Math.min(rows - 1, Math.max(0, chick.y + dy));
+            chick = { x: newX, y: newY };
+
+            if (chick.x === grain.x && chick.y === grain.y) {
+                score += 1;
+                placeGrain();
+                updateStats();
+            }
+            drawScene();
+        }
+
+        function handleDirection(direction) {
+            switch (direction) {
+                case "up":
+                    moveChick(0, -1);
+                    break;
+                case "down":
+                    moveChick(0, 1);
+                    break;
+                case "left":
+                    moveChick(-1, 0);
+                    break;
+                case "right":
+                    moveChick(1, 0);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        window.addEventListener("keydown", (event) => {
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+                event.preventDefault();
+            }
+
+            if (event.key === "ArrowUp") {
+                handleDirection("up");
+            } else if (event.key === "ArrowDown") {
+                handleDirection("down");
+            } else if (event.key === "ArrowLeft") {
+                handleDirection("left");
+            } else if (event.key === "ArrowRight") {
+                handleDirection("right");
+            }
+        });
+
+        controlButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                handleDirection(button.dataset.direction);
+            });
+        });
+
+        restartBtn.addEventListener("click", () => {
+            resetGame();
+        });
+
+        resetGame();
+    </script>
+</body>
+</html>

@@ -12,7 +12,7 @@
             <div class="games-grid">
                 @foreach (var game in games)
                 {
-                    <button class="game-tile" @onclick="() => SelectGame(game.Type)">
+                    <button class="game-tile" type="button" @onclick="() => SelectGame(game.Type)">
                         <img class="game-tile-image" src="@game.ImagePath" alt="@game.Name" />
                         <div class="game-tile-content">
                             <h3>@game.Name</h3>
@@ -83,6 +83,10 @@
                 {
                     <SnakeGame Height="520" AutoStart="true" />
                 }
+                else if (selectedGame == GameType.Chicken)
+                {
+                    <iframe class="pacman-frame" src="games/kurczaczek.html" title="Kurczaczek i Ziarenka"></iframe>
+                }
             </div>
         </div>
     }
@@ -94,7 +98,8 @@
         Memory,
         Pacman,
         Tribute,
-        Snake
+        Snake,
+        Chicken
     }
 
     private sealed record GameCard(GameType Type, string Name, string Description, string ImagePath);
@@ -104,7 +109,8 @@
         new GameCard(GameType.Memory, "Memory", "Odkrywaj pary i trenuj pamięć.", "images/games/memory.svg"),
         new GameCard(GameType.Pacman, "Pac Man", "Zbieraj punkty i uciekaj przed duchami.", "images/games/pacman.svg"),
         new GameCard(GameType.Tribute, "Poborca i Rabusie", "Zbieraj podatki i unikaj rabusiów.", "images/games/tribute.svg"),
-        new GameCard(GameType.Snake, "Wąż", "Zbieraj owoce i rośnij!", "images/games/snake.svg")
+        new GameCard(GameType.Snake, "Wąż", "Zbieraj owoce i rośnij!", "images/games/snake.svg"),
+        new GameCard(GameType.Chicken, "Kurczaczek i Ziarenka", "Zbieraj ziarenka i poprawiaj refleks.", "images/games/chicken.svg")
     };
 
     private GameType? selectedGame;
