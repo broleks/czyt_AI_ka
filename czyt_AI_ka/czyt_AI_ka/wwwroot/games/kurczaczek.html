@@ -46,6 +46,24 @@
             display: flex;
             gap: 12px;
             font-weight: 600;
+            flex-wrap: wrap;
+        }
+
+        .difficulty {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .difficulty select {
+            border-radius: 999px;
+            border: 1px solid #d6a843;
+            padding: 6px 12px;
+            background: #fff4d1;
+            font-weight: 600;
+            cursor: pointer;
         }
 
         canvas {
@@ -86,12 +104,63 @@
             color: #4a4a4a;
             text-align: center;
         }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(30, 25, 10, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 10;
+        }
+
+        .overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .overlay-card {
+            background: #fff7e8;
+            border-radius: 18px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+            max-width: 420px;
+        }
+
+        .overlay-card h2 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 1.5rem;
+        }
+
+        .overlay-card p {
+            margin: 0 0 16px;
+            color: #4a4a4a;
+        }
+
+        .overlay-card button {
+            min-width: 200px;
+        }
     </style>
 </head>
 <body>
     <div class="game-shell">
         <header>
             <h1>Kurczaczek i Ziarenka</h1>
+            <label class="difficulty" for="difficulty">
+                Poziom trudności
+                <select id="difficulty">
+                    <option value="easy">Łatwy</option>
+                    <option value="medium" selected>Średni</option>
+                    <option value="hard">Trudny</option>
+                </select>
+            </label>
             <div class="stats">
                 <span id="score">Wynik: 0</span>
                 <span id="lives">Życia: 3</span>
@@ -99,10 +168,18 @@
             </div>
         </header>
 
-        <canvas id="gameCanvas" width="600" height="420" aria-label="Plansza gry"></canvas>
+        <canvas id="gameCanvas" width="600" height="400" aria-label="Plansza gry"></canvas>
 
         <button class="restart-btn" type="button" id="restart">Zagraj ponownie</button>
         <div class="hint">Steruj strzałkami na klawiaturze.</div>
+    </div>
+
+    <div class="overlay" id="winOverlay" aria-live="polite">
+        <div class="overlay-card">
+            <h2>Wygrana!</h2>
+            <p>Kurczaczek zebrał wszystkie ziarenka. Świetna robota!</p>
+            <button class="restart-btn" type="button" id="playAgain">Zagraj ponownie</button>
+        </div>
     </div>
 
     <script>
@@ -112,17 +189,38 @@
         const livesEl = document.getElementById("lives");
         const timeEl = document.getElementById("time");
         const restartBtn = document.getElementById("restart");
+        const difficultySelect = document.getElementById("difficulty");
+        const winOverlay = document.getElementById("winOverlay");
+        const playAgainBtn = document.getElementById("playAgain");
         const gridSize = 10;
         const cols = 12;
         const rows = 8;
         const tileSize = canvas.width / cols;
+        canvas.height = rows * tileSize;
         const safeZoneColumns = 2;
         const safeZoneStart = cols - safeZoneColumns;
+        const difficultyConfig = {
+            easy: {
+                label: "Łatwy",
+                foxSpawnIntervalMs: 30000,
+                grainsToWin: 30
+            },
+            medium: {
+                label: "Średni",
+                foxSpawnIntervalMs: 20000,
+                grainsToWin: 60
+            },
+            hard: {
+                label: "Trudny",
+                foxSpawnIntervalMs: 10000,
+                grainsToWin: 120
+            }
+        };
         const difficultySettings = {
             foxSpeedMs: 650,
-            foxSpawnIntervalMs: 30000,
+            foxSpawnIntervalMs: difficultyConfig.medium.foxSpawnIntervalMs,
             foxActiveDurationMs: 10000,
-            grainsToWin: 12
+            grainsToWin: difficultyConfig.medium.grainsToWin
         };
         const foxDen = { x: 0, y: 0 };
 
@@ -132,6 +230,7 @@
         let score = 0;
         let lives = 3;
         let timeElapsed = 0;
+        let isWin = false;
         let timerId;
         let foxSpawnId;
         let foxMoveId;
@@ -155,9 +254,11 @@
             score = 0;
             lives = 3;
             timeElapsed = 0;
+            isWin = false;
             stopFox();
             placeGrain();
             updateStats();
+            hideWinOverlay();
             drawScene();
             clearInterval(timerId);
             timerId = setInterval(() => {
@@ -229,12 +330,15 @@
             ctx.textBaseline = "middle";
             ctx.fillText("🐣", (chick.x + 0.5) * tileSize, (chick.y + 0.5) * tileSize);
             ctx.fillText("🌾", (grain.x + 0.5) * tileSize, (grain.y + 0.5) * tileSize);
-            if (fox.active) {
+            if (fox.active || (fox.x === foxDen.x && fox.y === foxDen.y)) {
                 ctx.fillText("🦊", (fox.x + 0.5) * tileSize, (fox.y + 0.5) * tileSize);
             }
         }
 
         function moveChick(dx, dy) {
+            if (isWin) {
+                return;
+            }
             const newX = Math.min(cols - 1, Math.max(0, chick.x + dx));
             const newY = Math.min(rows - 1, Math.max(0, chick.y + dy));
             chick = { x: newX, y: newY };
@@ -243,6 +347,10 @@
                 score += 1;
                 placeGrain();
                 updateStats();
+                if (score >= difficultySettings.grainsToWin) {
+                    winGame();
+                    return;
+                }
             }
             if (fox.active && chick.x === fox.x && chick.y === fox.y) {
                 handleFoxCatch();
@@ -255,7 +363,7 @@
         }
 
         function spawnFox() {
-            if (fox.active) {
+            if (fox.active || isWin) {
                 return;
             }
             fox = { x: foxDen.x, y: foxDen.y, active: true };
@@ -269,7 +377,7 @@
         }
 
         function despawnFox() {
-            fox.active = false;
+            fox = { x: foxDen.x, y: foxDen.y, active: false };
             clearInterval(foxMoveId);
             clearTimeout(foxLifetimeId);
             drawScene();
@@ -288,7 +396,7 @@
         }
 
         function moveFox() {
-            if (!fox.active) {
+            if (!fox.active || isWin) {
                 return;
             }
 
@@ -359,6 +467,37 @@
         restartBtn.addEventListener("click", () => {
             resetGame();
         });
+
+        playAgainBtn.addEventListener("click", () => {
+            resetGame();
+        });
+
+        difficultySelect.addEventListener("change", (event) => {
+            applyDifficulty(event.target.value);
+        });
+
+        function applyDifficulty(level) {
+            const setting = difficultyConfig[level] ?? difficultyConfig.medium;
+            difficultySettings.foxSpawnIntervalMs = setting.foxSpawnIntervalMs;
+            difficultySettings.grainsToWin = setting.grainsToWin;
+            resetGame();
+        }
+
+        function winGame() {
+            isWin = true;
+            stopFox();
+            clearInterval(timerId);
+            showWinOverlay();
+            drawScene();
+        }
+
+        function showWinOverlay() {
+            winOverlay.classList.add("visible");
+        }
+
+        function hideWinOverlay() {
+            winOverlay.classList.remove("visible");
+        }
 
         resetGame();
     </script>
