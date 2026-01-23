@@ -1,0 +1,19 @@
+# Build outputs
+bin/
+obj/
+
+# IDE/user files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Temporary/backup files
+*.swp
+*.tmp
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
