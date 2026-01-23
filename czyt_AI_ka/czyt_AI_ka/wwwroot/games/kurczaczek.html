@@ -56,15 +56,6 @@
             border: 3px solid #9fc35c;
         }
 
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            max-width: 260px;
-            margin: 0 auto;
-        }
-
-        .controls button,
         .restart-btn {
             border: none;
             border-radius: 12px;
@@ -76,12 +67,10 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
         }
 
-        .controls button:active,
         .restart-btn:active {
             transform: translateY(1px);
         }
 
-        .controls button:focus-visible,
         .restart-btn:focus-visible {
             outline: 2px solid #d6a843;
             outline-offset: 2px;
@@ -111,17 +100,8 @@
 
         <canvas id="gameCanvas" width="600" height="420" aria-label="Plansza gry"></canvas>
 
-        <div class="controls" aria-label="Sterowanie">
-            <span></span>
-            <button type="button" data-direction="up">▲</button>
-            <span></span>
-            <button type="button" data-direction="left">◀</button>
-            <button type="button" data-direction="down">▼</button>
-            <button type="button" data-direction="right">▶</button>
-        </div>
-
         <button class="restart-btn" type="button" id="restart">Zagraj ponownie</button>
-        <div class="hint">Steruj strzałkami na klawiaturze lub przyciskami na ekranie.</div>
+        <div class="hint">Steruj strzałkami na klawiaturze.</div>
     </div>
 
     <script>
@@ -130,12 +110,12 @@
         const scoreEl = document.getElementById("score");
         const timeEl = document.getElementById("time");
         const restartBtn = document.getElementById("restart");
-        const controlButtons = document.querySelectorAll(".controls button");
-
         const gridSize = 10;
         const cols = 12;
         const rows = 8;
         const tileSize = canvas.width / cols;
+        const safeZoneColumns = 2;
+        const safeZoneStart = cols - safeZoneColumns;
 
         let chick = { x: 0, y: 0 };
         let grain = { x: 0, y: 0 };
@@ -149,7 +129,10 @@
             do {
                 newX = Math.floor(Math.random() * cols);
                 newY = Math.floor(Math.random() * rows);
-            } while (newX === chick.x && newY === chick.y);
+            } while (
+                (newX === chick.x && newY === chick.y) ||
+                newX >= safeZoneStart
+            );
             grain = { x: newX, y: newY };
         }
 
@@ -178,6 +161,10 @@
             ctx.fillStyle = "#c4e887";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            const safeZoneX = safeZoneStart * tileSize;
+            ctx.fillStyle = "#ffe08a";
+            ctx.fillRect(safeZoneX, 0, safeZoneColumns * tileSize, canvas.height);
+
             ctx.strokeStyle = "rgba(0,0,0,0.1)";
             for (let x = 0; x <= cols; x += 1) {
                 ctx.beginPath();
@@ -191,6 +178,26 @@
                 ctx.lineTo(canvas.width, y * tileSize);
                 ctx.stroke();
             }
+
+            ctx.save();
+            ctx.strokeStyle = "#c6902b";
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 8]);
+            ctx.beginPath();
+            ctx.moveTo(safeZoneX, 0);
+            ctx.lineTo(safeZoneX, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#b17b1f";
+            for (let y = 0; y <= rows; y += 1) {
+                const yPos = y * tileSize;
+                ctx.beginPath();
+                ctx.moveTo(safeZoneX - 6, yPos);
+                ctx.lineTo(safeZoneX + 6, yPos);
+                ctx.stroke();
+            }
+            ctx.restore();
 
             ctx.font = `${tileSize * 0.8}px "Segoe UI Emoji"`;
             ctx.textAlign = "center";
@@ -245,12 +252,6 @@
             } else if (event.key === "ArrowRight") {
                 handleDirection("right");
             }
-        });
-
-        controlButtons.forEach((button) => {
-            button.addEventListener("click", () => {
-                handleDirection(button.dataset.direction);
-            });
         });
 
         restartBtn.addEventListener("click", () => {
