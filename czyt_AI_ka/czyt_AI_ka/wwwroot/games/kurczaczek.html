@@ -203,6 +203,8 @@
         const coopImageSrc = "images/games/coop.png";
         const foxDenImage = new Image();
         const coopImage = new Image();
+        let foxDenImageReady = false;
+        let coopImageReady = false;
         const difficultyConfig = {
             easy: {
                 label: "Łatwy",
@@ -243,12 +245,24 @@
 
         if (foxDenImageSrc) {
             foxDenImage.src = foxDenImageSrc;
-            foxDenImage.onload = () => drawScene();
+            foxDenImage.onload = () => {
+                foxDenImageReady = foxDenImage.naturalWidth > 0;
+                drawScene();
+            };
+            foxDenImage.onerror = () => {
+                foxDenImageReady = false;
+            };
         }
 
         if (coopImageSrc) {
             coopImage.src = coopImageSrc;
-            coopImage.onload = () => drawScene();
+            coopImage.onload = () => {
+                coopImageReady = coopImage.naturalWidth > 0;
+                drawScene();
+            };
+            coopImage.onerror = () => {
+                coopImageReady = false;
+            };
         }
 
         function placeGrain() {
@@ -315,7 +329,7 @@
                 foxDen.width * tileSize,
                 foxDen.height * tileSize
             );
-            if (foxDenImageSrc && foxDenImage.complete) {
+            if (foxDenImageSrc && foxDenImageReady) {
                 ctx.drawImage(
                     foxDenImage,
                     foxDen.x * tileSize,
@@ -359,7 +373,7 @@
             }
             ctx.restore();
 
-            if (coopImageSrc && coopImage.complete) {
+            if (coopImageSrc && coopImageReady) {
                 ctx.drawImage(
                     coopImage,
                     coopZone.x * tileSize,
