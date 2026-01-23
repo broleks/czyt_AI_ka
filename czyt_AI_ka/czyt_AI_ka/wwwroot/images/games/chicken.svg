@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Kurczaczek">
+  <rect width="96" height="96" rx="20" fill="#fff4c2"/>
+  <circle cx="48" cy="52" r="26" fill="#ffe36e" stroke="#e3b74f" stroke-width="3"/>
+  <circle cx="38" cy="46" r="4" fill="#5b4a2f"/>
+  <circle cx="58" cy="46" r="4" fill="#5b4a2f"/>
+  <path d="M48 60 L56 66 L48 70 L40 66 Z" fill="#f08b3e"/>
+  <path d="M38 28 C40 22 46 20 48 24 C50 18 58 18 60 24 C62 20 68 22 68 28" fill="none" stroke="#e3b74f" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="26" cy="70" r="4" fill="#d9b14f"/>
+  <circle cx="72" cy="68" r="5" fill="#d9b14f"/>
+  <circle cx="62" cy="78" r="3" fill="#d9b14f"/>
+</svg>
